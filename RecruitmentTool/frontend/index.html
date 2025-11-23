@@ -1,254 +1,200 @@
-from IPython.display import HTML
-HTML("""
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Recruitment Matching Tool — Dashboard</title>
-  <!-- Bootstrap 5 CDN -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recruitment Matching — Dark Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { background: #f8fafc; }
-    .card { border-radius: 12px; }
-    .small-muted { font-size: .85rem; color: #6c757d; }
-    .upload-area { border: 2px dashed #e6eef8; padding: 18px; border-radius: 10px; background: #ffffff; }
-    .cursor-pointer { cursor: pointer; }
-    /* simple heatmap placeholder */
-    .heat-cell { width: 28px; height: 20px; display:inline-block; margin:1px; }
+    :root {
+      --bg: #0b0f14;
+      --panel: #0f1720;
+      --muted: #9aa7bf;
+      --accent: #0ea5ff; /* electric blue */
+      --card: #0c1116;
+    }
+    html,body { height:100%; background: linear-gradient(180deg,#07090b 0%, #0b0f14 100%); color:#e6eef8; font-family: Inter, system-ui, Arial; }
+    .container { max-width:1200px; margin-top:28px; }
+    .navbar { background: linear-gradient(90deg, rgba(0,0,0,0.25), rgba(10,14,20,0.25)); border-bottom:1px solid rgba(255,255,255,0.02); }
+    .navbar-brand { color:var(--accent) !important; font-weight:700; }
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.03); border-radius:12px; }
+    .btn-accent { background: linear-gradient(90deg,#0ea5ff,#3b82f6); color:#051023; font-weight:700; border: none; }
+    .small-muted { color: var(--muted); font-size:0.87rem; }
+    input[type="file"], .form-control, textarea { background: rgba(255,255,255,0.02); color: #dcefff; border:1px solid rgba(255,255,255,0.04); }
+    table thead { background: rgba(255,255,255,0.02); color: #cfe9ff; }
+    .badge-miss { background:#ff6b6b; color:#051023; }
+    .heat-cell { width:22px; height:14px; display:inline-block; margin:1px; border-radius:2px; }
+    .muted-pill { color:var(--muted); font-size:0.8rem; }
   </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-  <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="#">Recruitment Matching</a>
-    <div class="d-flex">
-      <span class="small-muted me-3">VARCHAS.Co</span>
-      <button id="exportCsvBtn" class="btn btn-outline-success btn-sm me-2">Export CSV</button>
-      <button class="btn btn-outline-primary btn-sm">Export PDF</button>
+<nav class="navbar navbar-expand-lg py-2">
+  <div class="container">
+    <a class="navbar-brand" href="#">Recruitment Matrix</a>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="small-muted">VARCHAS.Co</span>
+      <button id="exportCsvBtn" class="btn btn-sm btn-outline-light">Export CSV</button>
+      <a href="#" class="btn btn-sm btn-outline-light">Docs</a>
     </div>
   </div>
 </nav>
 
-<div class="container my-4">
+<div class="container">
   <div class="row g-3">
-    <!-- Upload / Controls -->
-    <div class="col-12 col-lg-4">
-      <div class="card p-3 shadow-sm">
-        <h6 class="mb-3">Uploads</h6>
-        <div class="mb-3">
-          <label class="form-label">Upload Job Description (PDF / TXT)</label>
-          <input id="jdFile" class="form-control" type="file" accept=".pdf,.txt" />
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Upload Resumes (ZIP of PDFs or CSV)</label>
-          <input id="resumesFile" class="form-control" type="file" accept=".zip,.csv,.pdf" multiple />
-          <div class="form-text">Tip: send a CSV for faster processing (one row per resume, skills column).</div>
-        </div>
+    <div class="col-lg-4">
+      <div class="card p-3">
+        <h5 class="mb-2" style="color:var(--accent)">Uploads & Controls</h5>
+        <label class="form-label small-muted">Upload Job Description (PDF / TXT)</label>
+        <input id="jdFile" type="file" accept=".pdf,.txt" class="form-control mb-2"/>
+        <label class="form-label small-muted">Upload Resumes (.zip, .pdf, .docx, .csv)</label>
+        <input id="resumesFile" type="file" accept=".zip,.csv,.pdf,.docx" multiple class="form-control mb-2"/>
         <div class="d-grid gap-2">
-          <button id="analyzeBtn" class="btn btn-primary">Analyze</button>
-          <button id="clearBtn" class="btn btn-outline-secondary">Clear</button>
+          <button id="analyzeBtn" class="btn btn-accent">Analyze</button>
+          <button id="clearBtn" class="btn btn-outline-light">Clear</button>
         </div>
-        <hr>
+        <hr style="border-color: rgba(255,255,255,0.03)">
         <div>
           <h6 class="mb-1">Status</h6>
-          <div id="statusText" class="small-muted">No analysis run yet.</div>
+          <div id="statusText" class="small-muted">No analysis run yet</div>
         </div>
       </div>
 
-      <div class="card p-3 mt-3 shadow-sm">
-        <h6 class="mb-2">Quick Filters</h6>
-        <div class="mb-2">
-          <label class="form-label">Min match score</label>
-          <input id="minScore" type="range" min="0" max="100" value="50" class="form-range">
-        </div>
-        <div class="mb-1 small-muted">Show candidates with match &ge; <span id="minScoreVal">50</span>%</div>
+      <div class="card p-3 mt-3">
+        <h6 class="mb-2">Filters</h6>
+        <label class="form-label small-muted">Min match score: <span id="minScoreVal">50</span>%</label>
+        <input id="minScore" type="range" min="0" max="100" value="50" class="form-range"/>
       </div>
     </div>
 
-    <!-- Main Dashboard -->
-    <div class="col-12 col-lg-8">
+    <div class="col-lg-8">
+      <div class="card p-3 mb-3">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h5 style="color:var(--accent); margin:0">Overview</h5>
+            <div class="muted-pill">Roles analysed: <span id="rolesCount">0</span></div>
+          </div>
+          <div class="text-end">
+            <div style="font-size:22px; font-weight:700" id="numProfiles">0</div>
+            <div class="small-muted">Profiles</div>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-6 text-center">
+            <div class="display-6" id="avgGap">0%</div>
+            <div class="small-muted">Average Gap</div>
+          </div>
+          <div class="col-6 text-center">
+            <div class="display-6" id="avgMatch">0%</div>
+            <div class="small-muted">Avg Match</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- charts + lists -->
       <div class="row g-3">
-        <div class="col-12">
-          <div class="card p-3 shadow-sm">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="mb-0">Overview</h6>
-              <div class="small-muted">Roles analysed: <span id="rolesCount">0</span></div>
-            </div>
-            <div class="row">
-              <div class="col-4 text-center">
-                <div class="display-6" id="numProfiles">0</div>
-                <div class="small-muted">Profiles</div>
-              </div>
-              <div class="col-4 text-center">
-                <div class="display-6" id="avgGap">0%</div>
-                <div class="small-muted">Average Gap</div>
-              </div>
-              <div class="col-4 text-center">
-                <div class="display-6" id="avgMatch">0%</div>
-                <div class="small-muted">Avg Match Score</div>
-              </div>
-            </div>
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h6 style="color:var(--accent)">Skill Gap by Role</h6>
+            <canvas id="skillGapChart" height="200"></canvas>
           </div>
         </div>
-
         <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <h6>Skill Gap by Role</h6>
-            <canvas id="skillGapChart" height="220"></canvas>
-          </div>
-        </div>
-
-        <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <h6>Top Missing Skills</h6>
-            <ul class="list-group list-group-flush" id="missingSkillsList">
-              <li class="list-group-item">No data</li>
+          <div class="card p-3">
+            <h6 style="color:var(--accent)">Top Missing Skills</h6>
+            <ul id="missingSkillsList" class="list-group list-group-flush">
+              <li class="list-group-item bg-transparent text-muted">No data</li>
             </ul>
           </div>
         </div>
 
         <div class="col-12">
-          <div class="card p-3 shadow-sm">
+          <div class="card p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="mb-0">Candidate Matches</h6>
-              <div class="d-flex align-items-center">
-                <label class="me-2 small-muted mb-0">Rows per page</label>
-                <select id="rowsPerPage" class="form-select form-select-sm me-3" style="width:80px;">
-                  <option value="10">10</option>
-                  <option value="20">20</option>
-                  <option value="50">50</option>
-                </select>
-                <div class="small-muted me-2">Showing <span id="displayingCount">0</span> of <span id="totalCount">0</span></div>
-              </div>
+              <h6 style="color:var(--accent)">Candidate Matches</h6>
+              <div class="small-muted">Showing <span id="displayingCount">0</span> of <span id="totalCount">0</span></div>
             </div>
             <div class="table-responsive">
-              <table class="table table-hover" id="candidatesTable">
-                <thead class="table-light">
+              <table class="table table-hover text-light" id="candidatesTable">
+                <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Match %</th>
-                    <th>Missing Skills</th>
-                    <th>Actions</th>
+                    <th>#</th><th>Name</th><th>Match %</th><th>Missing Skills</th><th>Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr><td colspan="5" class="small-muted">No results</td></tr>
-                </tbody>
+                <tbody><tr><td colspan="5" class="small-muted">No results</td></tr></tbody>
               </table>
             </div>
-            <nav>
-              <ul class="pagination" id="paginationControls"></ul>
-            </nav>
           </div>
         </div>
 
         <div class="col-12">
-          <div class="card p-3 shadow-sm">
-            <h6>Employee Competency Heatmap (preview)</h6>
-            <div id="heatmapPreview" class="d-flex flex-wrap" style="min-height:80px;">
-              <!-- colored cells go here -->
-            </div>
-            <div class="mt-2 small-muted">Heatmap: rows = employees, columns = skills (darker = better)</div>
+          <div class="card p-3">
+            <h6 style="color:var(--accent)">Employee Competency Heatmap (preview)</h6>
+            <div id="heatmapPreview" class="mt-2"></div>
+            <div class="small-muted mt-2">Heatmap: darker = better</div>
           </div>
         </div>
-
       </div>
     </div>
   </div>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// --- Helper: expected backend endpoints (customize if needed) ---
-// POST /api/upload_jd      -> form-data: file (jd)
-// POST /api/upload_resumes -> form-data: file (resumes)
-// GET  /api/analyze        -> returns JSON with analysis
+const BASE = "https://recruitment-matrix.onrender.com";
 
-let currentCandidates = []; // full list from server
-let filteredCandidates = []; // after min score filter
-let currentPage = 1;
-let rowsPerPage = parseInt(document.getElementById('rowsPerPage').value, 10);
-
+// elements
 const jdFile = document.getElementById('jdFile');
 const resumesFile = document.getElementById('resumesFile');
 const analyzeBtn = document.getElementById('analyzeBtn');
 const statusText = document.getElementById('statusText');
 const minScore = document.getElementById('minScore');
 const minScoreVal = document.getElementById('minScoreVal');
-const exportCsvBtn = document.getElementById('exportCsvBtn');
-const rowsPerPageSel = document.getElementById('rowsPerPage');
 
-minScore.addEventListener('input', ()=> { minScoreVal.innerText = minScore.value; applyFiltersAndRender(); });
-rowsPerPageSel.addEventListener('change', ()=>{ rowsPerPage = parseInt(rowsPerPageSel.value,10); currentPage = 1; applyFiltersAndRender(); });
+let currentCandidates = [];
 
-analyzeBtn.addEventListener('click', async () => {
+minScore.addEventListener('input', ()=> {
+  minScoreVal.innerText = minScore.value;
+  applyFiltersAndRender();
+});
+
+analyzeBtn.addEventListener('click', async ()=>{
   try {
-    statusText.innerText = 'Uploading files...';
-
-    // Upload JD (if provided)
+    statusText.innerText = 'Uploading...';
     if (jdFile.files.length) {
       const fd = new FormData(); fd.append('jd', jdFile.files[0]);
-      await fetch('/api/upload_jd', { method: 'POST', body: fd });
+      await fetch(BASE + '/api/upload_jd', { method:'POST', body: fd });
     }
-
-    // Upload resumes (if provided)
     if (resumesFile.files.length) {
       const fd = new FormData();
       Array.from(resumesFile.files).forEach((f,i)=> fd.append('resumes', f));
-      await fetch('/api/upload_resumes', { method: 'POST', body: fd });
+      await fetch(BASE + '/api/upload_resumes', { method:'POST', body: fd });
     }
-
     statusText.innerText = 'Analyzing...';
-    const res = await fetch('/api/analyze');
-    if (!res.ok) throw new Error('Analysis failed: ' + res.status);
-    const data = await res.json();
-    statusText.innerText = 'Analysis complete';
-    // store candidates
-    currentCandidates = (data.candidates || []).map((c, idx)=> ({ id: idx+1, ...c }));
+    const r = await fetch(BASE + '/api/analyze');
+    if (!r.ok) throw new Error('Analysis failed: ' + r.status);
+    const data = await r.json();
+    statusText.innerText = 'Complete';
+    // store and render
+    currentCandidates = (data.candidates || []).map((c,idx)=>({id: idx+1, ...c}));
     renderDashboard(data);
-  } catch (err) {
-    console.error(err);
-    statusText.innerText = 'Error: ' + err.message;
+  } catch (e) {
+    console.error(e);
+    statusText.innerText = 'Error: ' + e.message;
   }
 });
 
-exportCsvBtn.addEventListener('click', ()=>{
-  // export currently displayed candidates (filtered & paginated)
-  const exportAll = false; // set to true to export all matches instead of current page
-  if (exportAll) exportCSV(currentCandidates);
-  else {
-    const pageItems = getPageItems();
-    exportCSV(pageItems);
-  }
-});
-
-function exportCSV(items){
-  if (!items || !items.length) { alert('No candidates to export'); return; }
-  // build CSV
-  const headers = ['id','name','match_percent','missing_skills'];
-  const rows = items.map(it=> [it.id, it.name || '', (it.match||0).toFixed(1), (it.missing||[]).join('|')]);
-  const csvContent = '﻿' + [headers, ...rows].map(r => r.map(cell=> '"'+String(cell).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'candidate_matches.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-}
-
-function renderDashboard(data) {
+// small reuse of your existing rendering logic (adapted)
+function renderDashboard(data){
   document.getElementById('rolesCount').innerText = data.roles_count || 0;
   document.getElementById('numProfiles').innerText = data.profiles_count || 0;
-  document.getElementById('avgGap').innerText = (data.avg_gap_percent||0).toFixed(1) + '%';
-  document.getElementById('avgMatch').innerText = (data.avg_match_percent||0).toFixed(1) + '%';
-
+  document.getElementById('avgGap').innerText = (data.avg_gap_percent||0) + '%';
+  document.getElementById('avgMatch').innerText = (data.avg_match_percent||0) + '%';
   renderSkillGapChart(data.skill_gap_by_role || {labels:[], data:[]});
   renderMissingSkills(data.top_missing_skills || []);
-  // candidates are already stored in currentCandidates
-  applyFiltersAndRender();
   renderHeatmap(data.heatmap || {rows:[], cols:[], values:[]});
+  applyFiltersAndRender();
 }
 
 let skillGapChart = null;
@@ -257,118 +203,54 @@ function renderSkillGapChart(payload){
   const labels = payload.labels || [];
   const ds = payload.data || [];
   if (skillGapChart) skillGapChart.destroy();
-  skillGapChart = new Chart(ctx, { type: 'bar', data: { labels, datasets:[{label:'Avg Gap %', data: ds}]}, options:{responsive:true, maintainAspectRatio:false}});
+  skillGapChart = new Chart(ctx, { type:'bar', data:{labels, datasets:[{label:'Avg Gap %', data: ds, backgroundColor:'rgba(14,165,255,0.9)'}]}, options:{responsive:true, scales:{y:{beginAtZero:true}}}});
 }
 
 function renderMissingSkills(list){
   const ul = document.getElementById('missingSkillsList'); ul.innerHTML = '';
-  if (!list.length) { ul.innerHTML = '<li class="list-group-item">No data</li>'; return; }
+  if (!list || !list.length) { ul.innerHTML = '<li class="list-group-item bg-transparent text-muted">No data</li>'; return; }
   list.slice(0,10).forEach(s=>{
-    const li = document.createElement('li'); li.className='list-group-item d-flex justify-content-between align-items-center';
-    li.innerHTML = `<div><strong>${s.skill}</strong><div class='small-muted'>${s.count} profiles missing</div></div><span class='badge bg-danger rounded-pill'>${s.count}</span>`;
+    const li=document.createElement('li'); li.className='list-group-item bg-transparent d-flex justify-content-between align-items-center';
+    li.innerHTML = `<div><strong style="color:#cfe9ff">${s.skill}</strong><div class="small-muted">${s.count} profiles missing</div></div><span class="badge badge-miss">${s.count}</span>`;
     ul.appendChild(li);
   });
 }
 
 function applyFiltersAndRender(){
   const min = parseInt(minScore.value,10);
-  filteredCandidates = currentCandidates.filter(c => (c.match||0) >= min);
-  document.getElementById('totalCount').innerText = filteredCandidates.length;
-  // reset page if empty or page out of bounds
-  const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / rowsPerPage));
-  if (currentPage > totalPages) currentPage = totalPages;
-  renderCandidatesPage();
-  renderPaginationControls(totalPages);
-}
-
-function getPageItems(){
-  const start = (currentPage-1)*rowsPerPage;
-  return filteredCandidates.slice(start, start+rowsPerPage);
-}
-
-function renderCandidatesPage(){
+  const filtered = currentCandidates.filter(c => (c.match||0) >= min);
+  document.getElementById('totalCount').innerText = filtered.length;
+  document.getElementById('displayingCount').innerText = filtered.length;
   const tbody = document.querySelector('#candidatesTable tbody'); tbody.innerHTML='';
-  const pageItems = getPageItems();
-  document.getElementById('displayingCount').innerText = pageItems.length;
-  if (!pageItems.length) { tbody.innerHTML='<tr><td colspan="5" class="small-muted">No results</td></tr>'; return; }
-  pageItems.forEach((c,i)=>{
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="5" class="small-muted">No results</td></tr>'; return; }
+  filtered.forEach((c,i)=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${(currentPage-1)*rowsPerPage + i + 1}</td>
-                    <td>${c.name || '—'}</td>
-                    <td>${(c.match||0).toFixed(1)}%</td>
-                    <td>${(c.missing || []).slice(0,4).join(', ')}</td>
-                    <td><button class='btn btn-sm btn-outline-primary' onclick="showProfileById(${c.id})">View</button></td>`;
+    tr.innerHTML = `<td>${i+1}</td><td>${c.name||'—'}</td><td>${(c.match||0).toFixed(1)}%</td><td>${(c.missing||[]).slice(0,4).join(', ')}</td><td><button class="btn btn-sm btn-outline-light" onclick='viewProfile(${c.id})'>View</button></td>`;
     tbody.appendChild(tr);
   });
 }
 
-function renderPaginationControls(totalPages){
-  const ul = document.getElementById('paginationControls'); ul.innerHTML = '';
-  // prev
-  const prevLi = document.createElement('li'); prevLi.className = `page-item ${currentPage===1? 'disabled':''}`;
-  prevLi.innerHTML = `<a class='page-link' href='#' onclick='changePage(${currentPage-1});return false;'>Previous</a>`;
-  ul.appendChild(prevLi);
-
-  // simple page numbers (show up to 7)
-  const maxButtons = 7;
-  let start = Math.max(1, currentPage - Math.floor(maxButtons/2));
-  let end = Math.min(totalPages, start + maxButtons -1);
-  if (end - start < maxButtons -1) start = Math.max(1, end - maxButtons + 1);
-  for (let p=start; p<=end; p++){
-    const li = document.createElement('li'); li.className = `page-item ${p===currentPage? 'active':''}`;
-    li.innerHTML = `<a class='page-link' href='#' onclick='changePage(${p});return false;'>${p}</a>`;
-    ul.appendChild(li);
-  }
-
-  // next
-  const nextLi = document.createElement('li'); nextLi.className = `page-item ${currentPage===totalPages? 'disabled':''}`;
-  nextLi.innerHTML = `<a class='page-link' href='#' onclick='changePage(${currentPage+1});return false;'>Next</a>`;
-  ul.appendChild(nextLi);
+window.viewProfile = (id) => {
+  const it = currentCandidates.find(x=>x.id===id);
+  if (!it) return alert('Not found');
+  alert(`Name: ${it.name}\nMatch: ${(it.match||0)}%\nMissing: ${(it.missing||[]).join(', ')}`);
 }
 
-window.changePage = function(p){
-  const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / rowsPerPage));
-  if (p < 1 || p > totalPages) return;
-  currentPage = p; renderCandidatesPage(); renderPaginationControls(totalPages);
-}
-
-window.showProfileById = function(id){
-  const item = currentCandidates.find(c => c.id === id);
-  if (!item) return alert('Profile not found');
-  // simple modal-like detail using alert for prototype. You can swap for a Bootstrap modal later.
-  alert(`Name: ${item.name || '—'}
-Match: ${(item.match||0).toFixed(1)}%
-Missing: ${(item.missing||[]).join(', ')}`);
-}
-
-function renderHeatmap(heat){
+function renderHeatmap(h){
   const container = document.getElementById('heatmapPreview'); container.innerHTML='';
-  const rows = heat.rows || [];
-  const cols = heat.cols || [];
-  const vals = heat.values || [];
-  if (!rows.length || !cols.length) { container.innerHTML='<div class="small-muted">No heatmap data</div>'; return; }
-  const previewRows = Math.min(rows.length, 6);
-  for (let r=0; r<previewRows; r++){
-    const rowWrap = document.createElement('div'); rowWrap.className='mb-1 w-100';
-    for (let c=0; c<cols.length; c++){
-      const val = (vals[r] && vals[r][c]) || 0;
-      const cell = document.createElement('span'); cell.className='heat-cell';
-      const shade = Math.round(230 - val*190);
-      cell.style.background = `rgb(${shade},${shade},255)`;
-      rowWrap.appendChild(cell);
+  if (!h.rows || !h.rows.length) { container.innerHTML = '<div class="small-muted">No heatmap data</div>'; return; }
+  const rows = Math.min(h.rows.length, 6);
+  for (let r=0;r<rows;r++){
+    const row = document.createElement('div'); row.className='mb-1';
+    for (let c=0;c<(h.cols||[]).length;c++){
+      const val = (h.values && h.values[r] && h.values[r][c]) || 0;
+      const shade = Math.round(40 + val*200);
+      const cell = document.createElement('span'); cell.className='heat-cell'; cell.style.background = `rgb(${shade},${shade},255)`;
+      row.appendChild(cell);
     }
-    container.appendChild(rowWrap);
+    container.appendChild(row);
   }
 }
-
-// clear button
-document.getElementById('clearBtn').addEventListener('click', ()=>{
-  jdFile.value=''; resumesFile.value=''; statusText.innerText='Cleared files.'; document.getElementById('rolesCount').innerText='0'; document.getElementById('numProfiles').innerText='0'; document.getElementById('avgGap').innerText='0%'; document.getElementById('avgMatch').innerText='0%'; document.getElementById('missingSkillsList').innerHTML='<li class="list-group-item">No data</li>'; currentCandidates = []; filteredCandidates = []; applyFiltersAndRender();
-});
-
-// Initial demo placeholder: you may remove
-// fetch('/api/demo').then(r=>r.json()).then(data=>{ currentCandidates = (data.candidates||[]).map((c,idx)=>({id:idx+1,...c})); renderDashboard(data); }).catch(()=>{});
 </script>
 </body>
 </html>
-""")
