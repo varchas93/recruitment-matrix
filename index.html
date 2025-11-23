@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recruitment Matching — Dark Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #0f1720;
+      --muted: #9aa7bf;
+      --accent: #0ea5ff; /* electric blue */
+      --card: #0c1116;
+    }
+    html,body { height:100%; background: linear-gradient(180deg,#07090b 0%, #0b0f14 100%); color:#e6eef8; font-family: Inter, system-ui, Arial; }
+    .container { max-width:1200px; margin-top:28px; }
+    .navbar { background: linear-gradient(90deg, rgba(0,0,0,0.25), rgba(10,14,20,0.25)); border-bottom:1px solid rgba(255,255,255,0.02); }
+    .navbar-brand { color:var(--accent) !important; font-weight:700; }
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.03); border-radius:12px; }
+    .btn-accent { background: linear-gradient(90deg,#0ea5ff,#3b82f6); color:#051023; font-weight:700; border: none; }
+    .small-muted { color: var(--muted); font-size:0.87rem; }
+    input[type="file"], .form-control, textarea { background: rgba(255,255,255,0.02); color: #dcefff; border:1px solid rgba(255,255,255,0.04); }
+    table thead { background: rgba(255,255,255,0.02); color: #cfe9ff; }
+    .badge-miss { background:#ff6b6b; color:#051023; }
+    .heat-cell { width:22px; height:14px; display:inline-block; margin:1px; border-radius:2px; }
+    .muted-pill { color:var(--muted); font-size:0.8rem; }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg py-2">
+  <div class="container">
+    <a class="navbar-brand" href="#">Recruitment Matrix</a>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="small-muted">VARCHAS.Co</span>
+      <button id="exportCsvBtn" class="btn btn-sm btn-outline-light">Export CSV</button>
+      <a href="#" class="btn btn-sm btn-outline-light">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="card p-3">
+        <h5 class="mb-2" style="color:var(--accent)">Uploads & Controls</h5>
+        <label class="form-label small-muted">Upload Job Description (PDF / TXT)</label>
+        <input id="jdFile" type="file" accept=".pdf,.txt" class="form-control mb-2"/>
+        <label class="form-label small-muted">Upload Resumes (.zip, .pdf, .docx, .csv)</label>
+        <input id="resumesFile" type="file" accept=".zip,.csv,.pdf,.docx" multiple class="form-control mb-2"/>
+        <div class="d-grid gap-2">
+          <button id="analyzeBtn" class="btn btn-accent">Analyze</button>
+          <button id="clearBtn" class="btn btn-outline-light">Clear</button>
+        </div>
+        <hr style="border-color: rgba(255,255,255,0.03)">
+        <div>
+          <h6 class="mb-1">Status</h6>
+          <div id="statusText" class="small-muted">No analysis run yet</div>
+        </div>
+      </div>
+
+      <div class="card p-3 mt-3">
+        <h6 class="mb-2">Filters</h6>
+        <label class="form-label small-muted">Min match score: <span id="minScoreVal">50</span>%</label>
+        <input id="minScore" type="range" min="0" max="100" value="50" class="form-range"/>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card p-3 mb-3">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h5 style="color:var(--accent); margin:0">Overview</h5>
+            <div class="muted-pill">Roles analysed: <span id="rolesCount">0</span></div>
+          </div>
+          <div class="text-end">
+            <div style="font-size:22px; font-weight:700" id="numProfiles">0</div>
+            <div class="small-muted">Profiles</div>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-6 text-center">
+            <div class="display-6" id="avgGap">0%</div>
+            <div class="small-muted">Average Gap</div>
+          </div>
+          <div class="col-6 text-center">
+            <div class="display-6" id="avgMatch">0%</div>
+            <div class="small-muted">Avg Match</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- charts + lists -->
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h6 style="color:var(--accent)">Skill Gap by Role</h6>
+            <canvas id="skillGapChart" height="200"></canvas>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h6 style="color:var(--accent)">Top Missing Skills</h6>
+            <ul id="missingSkillsList" class="list-group list-group-flush">
+              <li class="list-group-item bg-transparent text-muted">No data</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 style="color:var(--accent)">Candidate Matches</h6>
+              <div class="small-muted">Showing <span id="displayingCount">0</span> of <span id="totalCount">0</span></div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover text-light" id="candidatesTable">
+                <thead>
+                  <tr>
+                    <th>#</th><th>Name</th><th>Match %</th><th>Missing Skills</th><th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody><tr><td colspan="5" class="small-muted">No results</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="card p-3">
+            <h6 style="color:var(--accent)">Employee Competency Heatmap (preview)</h6>
+            <div id="heatmapPreview" class="mt-2"></div>
+            <div class="small-muted mt-2">Heatmap: darker = better</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const BASE = "https://recruitment-matrix.onrender.com";
+
+// elements
+const jdFile = document.getElementById('jdFile');
+const resumesFile = document.getElementById('resumesFile');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const statusText = document.getElementById('statusText');
+const minScore = document.getElementById('minScore');
+const minScoreVal = document.getElementById('minScoreVal');
+
+let currentCandidates = [];
+
+minScore.addEventListener('input', ()=> {
+  minScoreVal.innerText = minScore.value;
+  applyFiltersAndRender();
+});
+
+analyzeBtn.addEventListener('click', async ()=>{
+  try {
+    statusText.innerText = 'Uploading...';
+    if (jdFile.files.length) {
+      const fd = new FormData(); fd.append('jd', jdFile.files[0]);
+      await fetch(BASE + '/api/upload_jd', { method:'POST', body: fd });
+    }
+    if (resumesFile.files.length) {
+      const fd = new FormData();
+      Array.from(resumesFile.files).forEach((f,i)=> fd.append('resumes', f));
+      await fetch(BASE + '/api/upload_resumes', { method:'POST', body: fd });
+    }
+    statusText.innerText = 'Analyzing...';
+    const r = await fetch(BASE + '/api/analyze');
+    if (!r.ok) throw new Error('Analysis failed: ' + r.status);
+    const data = await r.json();
+    statusText.innerText = 'Complete';
+    // store and render
+    currentCandidates = (data.candidates || []).map((c,idx)=>({id: idx+1, ...c}));
+    renderDashboard(data);
+  } catch (e) {
+    console.error(e);
+    statusText.innerText = 'Error: ' + e.message;
+  }
+});
+
+// small reuse of your existing rendering logic (adapted)
+function renderDashboard(data){
+  document.getElementById('rolesCount').innerText = data.roles_count || 0;
+  document.getElementById('numProfiles').innerText = data.profiles_count || 0;
+  document.getElementById('avgGap').innerText = (data.avg_gap_percent||0) + '%';
+  document.getElementById('avgMatch').innerText = (data.avg_match_percent||0) + '%';
+  renderSkillGapChart(data.skill_gap_by_role || {labels:[], data:[]});
+  renderMissingSkills(data.top_missing_skills || []);
+  renderHeatmap(data.heatmap || {rows:[], cols:[], values:[]});
+  applyFiltersAndRender();
+}
+
+let skillGapChart = null;
+function renderSkillGapChart(payload){
+  const ctx = document.getElementById('skillGapChart');
+  const labels = payload.labels || [];
+  const ds = payload.data || [];
+  if (skillGapChart) skillGapChart.destroy();
+  skillGapChart = new Chart(ctx, { type:'bar', data:{labels, datasets:[{label:'Avg Gap %', data: ds, backgroundColor:'rgba(14,165,255,0.9)'}]}, options:{responsive:true, scales:{y:{beginAtZero:true}}}});
+}
+
+function renderMissingSkills(list){
+  const ul = document.getElementById('missingSkillsList'); ul.innerHTML = '';
+  if (!list || !list.length) { ul.innerHTML = '<li class="list-group-item bg-transparent text-muted">No data</li>'; return; }
+  list.slice(0,10).forEach(s=>{
+    const li=document.createElement('li'); li.className='list-group-item bg-transparent d-flex justify-content-between align-items-center';
+    li.innerHTML = `<div><strong style="color:#cfe9ff">${s.skill}</strong><div class="small-muted">${s.count} profiles missing</div></div><span class="badge badge-miss">${s.count}</span>`;
+    ul.appendChild(li);
+  });
+}
+
+function applyFiltersAndRender(){
+  const min = parseInt(minScore.value,10);
+  const filtered = currentCandidates.filter(c => (c.match||0) >= min);
+  document.getElementById('totalCount').innerText = filtered.length;
+  document.getElementById('displayingCount').innerText = filtered.length;
+  const tbody = document.querySelector('#candidatesTable tbody'); tbody.innerHTML='';
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="5" class="small-muted">No results</td></tr>'; return; }
+  filtered.forEach((c,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${c.name||'—'}</td><td>${(c.match||0).toFixed(1)}%</td><td>${(c.missing||[]).slice(0,4).join(', ')}</td><td><button class="btn btn-sm btn-outline-light" onclick='viewProfile(${c.id})'>View</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+window.viewProfile = (id) => {
+  const it = currentCandidates.find(x=>x.id===id);
+  if (!it) return alert('Not found');
+  alert(`Name: ${it.name}\nMatch: ${(it.match||0)}%\nMissing: ${(it.missing||[]).join(', ')}`);
+}
+
+function renderHeatmap(h){
+  const container = document.getElementById('heatmapPreview'); container.innerHTML='';
+  if (!h.rows || !h.rows.length) { container.innerHTML = '<div class="small-muted">No heatmap data</div>'; return; }
+  const rows = Math.min(h.rows.length, 6);
+  for (let r=0;r<rows;r++){
+    const row = document.createElement('div'); row.className='mb-1';
+    for (let c=0;c<(h.cols||[]).length;c++){
+      const val = (h.values && h.values[r] && h.values[r][c]) || 0;
+      const shade = Math.round(40 + val*200);
+      const cell = document.createElement('span'); cell.className='heat-cell'; cell.style.background = `rgb(${shade},${shade},255)`;
+      row.appendChild(cell);
+    }
+    container.appendChild(row);
+  }
+}
+</script>
+</body>
+</html>
