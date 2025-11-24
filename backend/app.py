@@ -14,12 +14,16 @@ app = Flask(__name__, static_folder=None)
 app.config['UPLOAD_DIR'] = UPLOAD_DIR
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB limit
 
-# Simple health
+# -----------------------------
+# HEALTH CHECK
+# -----------------------------
 @app.route("/health")
 def health():
     return "OK"
 
-# Upload JD (pdf/txt). Saves file and stores parsed text in memory (or disc)
+# -----------------------------
+# UPLOAD JD (PDF/TXT)
+# -----------------------------
 @app.route("/api/upload_jd", methods=["POST"])
 def upload_jd():
     if 'jd' not in request.files:
@@ -28,17 +32,21 @@ def upload_jd():
     name = secure_filename(f.filename)
     dest = os.path.join(app.config['UPLOAD_DIR'], f"jd_{uuid.uuid4().hex}_{name}")
     f.save(dest)
-    jd_text = parse_jd_file(dest)  # returns text
-    # store JD text to a simple temp file (could be improved to DB)
-    jd_store = os.path.join(app.config['UPLOAD_DIR'],'current_jd.txt')
+
+    jd_text = parse_jd_file(dest)  # parse JD to text
+
+    # Save parsed text
+    jd_store = os.path.join(app.config['UPLOAD_DIR'], 'current_jd.txt')
     with open(jd_store, "w", encoding="utf-8") as wf:
         wf.write(jd_text or "")
+
     return jsonify({"status":"ok", "jd_path": dest}), 200
 
-# Upload resumes (accepts zip, csv, pdf, docx)
+# -----------------------------
+# UPLOAD RESUMES (ZIP/PDF/DOCX)
+# -----------------------------
 @app.route("/api/upload_resumes", methods=["POST"])
 def upload_resumes():
-    # "resumes" may be multiple files
     files = request.files.getlist('resumes')
     if not files:
         return jsonify({"error":"Missing 'resumes' files"}), 400
@@ -50,16 +58,20 @@ def upload_resumes():
         f.save(dest)
         saved.append(dest)
 
-    # parse saved files into candidate dict list
+    # parse resumes
     candidates = parse_resumes_upload(saved, app.config['UPLOAD_DIR'])
-    # persist parsed candidates to disk for /api/analyze
+
+    # save parsed data to disk
     import json
     cand_file = os.path.join(app.config['UPLOAD_DIR'], 'current_candidates.json')
     with open(cand_file, "w", encoding="utf-8") as wf:
         json.dump(candidates, wf, ensure_ascii=False, indent=2)
-    return jsonify({"status":"ok","files_saved": saved, "parsed_count": len(candidates)})
 
-# Analyze: reads stored JD & parsed candidates, runs analysis and returns dashboard payload
+    return jsonify({"status":"ok", "files_saved": saved, "parsed_count": len(candidates)})
+
+# -----------------------------
+# RUN ANALYSIS (JD + CANDIDATES)
+# -----------------------------
 @app.route("/api/analyze", methods=["GET"])
 def analyze():
     import json
@@ -77,48 +89,74 @@ def analyze():
         with open(jd_store, "r", encoding="utf-8") as rf:
             jd_text = rf.read()
 
-    # run the analysis engine (returns dashboard payload)
     payload = analyze_candidates(jd_text, candidates)
     return jsonify(payload)
 
-# Optional demo endpoint - returns demo JSON and includes a local path to the file you uploaded
-@app.route("/api/demo", methods=["GET"])
-def demo():
-    # Developer note: include the uploaded file local path per instruction
-    demo_image_local_path = "/mnt/data/05feef5d-174b-40f4-a5c3-2d166fc3b7cd.png"
-    # sample demo JSON (frontend can transform local path to a served URL)
-    demo_json = {
-        "message": "Demo data for dashboard",
-        "roles_count": 2,
-        "profiles_count": 4,
-        "avg_gap_percent": 23.5,
-        "avg_match_percent": 76.4,
-        "skill_gap_by_role": {"labels":["Dev","Analyst"], "data":[20,28]},
-        "top_missing_skills": [{"skill":"cloud","count":3},{"skill":"spark","count":2}],
-        "candidates": [
-            {"name":"Alice","match":82.3,"missing":["cloud"],"email":"alice@example.com"},
-            {"name":"Bob","match":65.4,"missing":["spark","ml"],"email":"bob@example.com"}
-        ],
-        "heatmap": {"rows":["A","B"], "cols":["python","sql"], "values":[[0.8,0.6],[0.4,0.9]]},
-        "preview_image_local_path": demo_image_local_path
-    }
-    return jsonify(demo_json)
+# -----------------------------
+# NEW ENDPOINT: TEXT INPUT (PASTE JD + RESUME)
+# -----------------------------
+@app.route("/api/analyze-text", methods=["POST"])
+def analyze_text():
+    """
+    Allows typing/pasting JD and Resume text directly.
+    Supports single or multiple resumes separated by ---
+    """
 
-# Keep single-match endpoint for quick testing (existing behavior)
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid or empty JSON"}), 400
+
+    jd_text = data.get("jd_text", "").strip()
+    resume_text = data.get("resume_text", "").strip()
+
+    if not jd_text:
+        return jsonify({"error": "Missing jd_text"}), 400
+
+    if not resume_text:
+        return jsonify({"error": "Missing resume_text"}), 400
+
+    # Split resumes by --- (multiple formats)
+    resumes = [r.strip() for r in resume_text.split("---") if r.strip()]
+
+    # Convert format to your existing candidate structure
+    candidates = []
+    for idx, r in enumerate(resumes):
+        candidates.append({
+            "name": f"Resume {idx+1}",
+            "text": r
+        })
+
+    # Use your existing engine
+    results = analyze_candidates(jd_text, candidates)
+
+    return jsonify({
+        "status": "success",
+        "jd_word_count": len(jd_text.split()),
+        "resumes_analyzed": len(resumes),
+        "results": results
+    })
+
+# -----------------------------
+# OLD SINGLE FILE MATCH (KEEPING)
+# -----------------------------
 @app.route("/match", methods=["POST"])
 def match_route():
-    # same interface used earlier: jd_text, jd_skills, resume (single)
     jd_text = request.form.get("jd_text","")
     jd_skills = request.form.get("jd_skills","").split(",") if request.form.get("jd_skills") else []
+
     if 'resume' not in request.files:
         return jsonify({"error":"Missing resume file"}), 400
+    
     f = request.files['resume']
     tmp = os.path.join(app.config['UPLOAD_DIR'], f"tmp_{uuid.uuid4().hex}_{secure_filename(f.filename)}")
     f.save(tmp)
+
     result = match_single_resume(jd_text, jd_skills, tmp)
     return jsonify(result)
 
+# -----------------------------
+# RUN APP
+# -----------------------------
 if __name__ == "__main__":
-    # use port 5000 (Render uses PORT env var)
     p = int(os.environ.get("PORT", "5000"))
     app.run(host="0.0.0.0", port=p)
