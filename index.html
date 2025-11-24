@@ -137,6 +137,24 @@
         <div id="statusText" class="small-muted">No analysis run yet</div>
       </div>
 
+      <!-- TEXT INPUT MODE -->
+<div class="card p-3 mt-3">
+  <h6 class="mb-2" style="color:var(--blue)">Paste JD / Resume</h6>
+
+  <label class="form-label small-muted">Paste Job Description</label>
+  <textarea id="jdText" class="form-control mb-2" rows="4"
+    placeholder="Paste the JD here..."></textarea>
+
+  <label class="form-label small-muted">Paste Resume Text(s)</label>
+  <textarea id="resumeText" class="form-control mb-2" rows="4"
+    placeholder="Paste one or multiple resumes. 
+Separate resumes using ---"></textarea>
+
+  <button id="analyzeTextBtn" class="btn btn-accent w-100 mt-2">
+    Analyze Text Input
+  </button>
+</div>
+
       <!-- FILTER CARD -->
       <div class="card p-3 mt-3">
         <h6 class="mb-2">Filters</h6>
@@ -248,3 +266,4 @@
 
 </body>
 </html>
+
