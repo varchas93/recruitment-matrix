@@ -1,66 +1,72 @@
 import os
-import csv
 import zipfile
-from .helpers import extract_text_from_docx, extract_text_from_pdf, safe_read_text
+import tempfile
+from typing import List
+import pdfplumber
+import docx
 
-def parse_jd_file(path):
-    # basic: txt or pdf
+def extract_text_from_pdf(path: str) -> str:
+    text_parts = []
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages:
+            txt = page.extract_text()
+            if txt:
+                text_parts.append(txt)
+    return "\n".join(text_parts)
+
+def extract_text_from_docx(path: str) -> str:
+    doc = docx.Document(path)
+    return "\n".join([p.text for p in doc.paragraphs if p.text])
+
+def extract_text_from_txt(path: str) -> str:
+    with open(path, "r", encoding="utf-8", errors="ignore") as rf:
+        return rf.read()
+
+def extract_text_from_file(path: str) -> str:
+    path = os.path.abspath(path)
     ext = os.path.splitext(path)[1].lower()
-    if ext in (".txt",):
-        return safe_read_text(path)
-    if ext in (".pdf",):
+    if ext == ".pdf":
         return extract_text_from_pdf(path)
-    # default
-    return safe_read_text(path)
+    elif ext in (".docx", ".doc"):
+        return extract_text_from_docx(path)
+    elif ext == ".txt":
+        return extract_text_from_txt(path)
+    else:
+        return ""
 
-def parse_resumes_upload(saved_paths, workdir):
+def parse_jd_file(path: str) -> str:
     """
-    Accepts list of file paths (zip/pdf/docx/csv). Returns list of parsed candidate dicts:
-    [{"name":..., "email":..., "skills":[...], "experience":n, "raw_text":...}, ...]
+    Parse a JD file (pdf/docx/txt) and return plain text.
+    """
+    return extract_text_from_file(path) or ""
+
+def _extract_from_zip(zip_path: str, out_dir: str) -> List[str]:
+    saved = []
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        z.extractall(out_dir)
+        for fname in z.namelist():
+            full = os.path.join(out_dir, fname)
+            if os.path.isfile(full):
+                saved.append(full)
+    return saved
+
+def parse_resumes_upload(paths: list, upload_dir: str) -> list:
+    """
+    paths: list of file paths (pdf/docx/txt/zip)
+    Returns: list of candidate dicts: {'name': filename, 'text': extracted_text}
     """
     candidates = []
-    for p in saved_paths:
+    tmpdir = tempfile.mkdtemp(dir=upload_dir)
+    for p in paths:
         ext = os.path.splitext(p)[1].lower()
         if ext == ".zip":
-            try:
-                with zipfile.ZipFile(p, "r") as z:
-                    z.extractall(workdir)
-                    # find files extracted and parse them
-                    for name in z.namelist():
-                        fpath = os.path.join(workdir, name)
-                        if os.path.isfile(fpath):
-                            candidates.extend(parse_resumes_upload([fpath], workdir))
-            except Exception:
-                continue
-        elif ext in (".csv",):
-            # parse CSV expecting columns like name, skills, email, experience
-            try:
-                import pandas as pd
-                df = pd.read_csv(p)
-                for _, row in df.iterrows():
-                    skills = []
-                    if 'skills' in row and not pd.isna(row['skills']):
-                        skills = [s.strip() for s in str(row['skills']).split(",") if s.strip()]
-                    candidates.append({
-                        "name": str(row.get('name','')) if 'name' in row else '',
-                        "email": str(row.get('email','')) if 'email' in row else '',
-                        "skills": skills,
-                        "experience": float(row.get('experience', 0)) if 'experience' in row else 0,
-                        "raw_text": str(row.get('resume_text','')) if 'resume_text' in row else ''
-                    })
-            except Exception:
-                continue
-        elif ext in (".docx",):
-            text = extract_text_from_docx(p)
-            candidates.append({"name":"","email":"","skills":[], "experience":0,"raw_text": text})
-        elif ext in (".pdf",):
-            text = extract_text_from_pdf(p)
-            candidates.append({"name":"","email":"","skills":[], "experience":0,"raw_text": text})
+            extracted = _extract_from_zip(p, tmpdir)
+            for e in extracted:
+                text = extract_text_from_file(e)
+                if text:
+                    candidates.append({"name": os.path.basename(e), "text": text})
         else:
-            # generic attempt to read text
-            try:
-                text = safe_read_text(p)
-                candidates.append({"name":"","email":"","skills":[], "experience":0,"raw_text": text})
-            except Exception:
-                continue
+            text = extract_text_from_file(p)
+            if text:
+                candidates.append({"name": os.path.basename(p), "text": text})
     return candidates
