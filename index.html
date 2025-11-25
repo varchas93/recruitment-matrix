@@ -1,270 +1,733 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Recruitment Matrix — Light Dashboard</title>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+ <title>Recruitment Matrix — Light Dashboard</title>
 
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ <script src="https://cdn.tailwindcss.com"></script>
+ <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <style>
-    :root {
-      --bg: #f5f8ff;
-      --panel: #ffffff;
-      --text: #1c1f25;
-      --text-muted: #6c757d;
-      --blue: #0B5ED7;
-      --blue-light: #E7F1FF;
-      --border: #e5e9f2;
-      --card-shadow: 0 4px 16px rgba(0,0,0,0.05);
-    }
+ <style>
+   :root {
+     --bg: #f5f8ff;
+     --panel: #ffffff;
+     --text: #1c1f25;
+     --text-muted: #6c757d;
+     --blue: #0B5ED7;
+     --blue-light: #E7F1FF;
+     --border: #e5e9f2;
+     --card-shadow: 0 4px 16px rgba(0,0,0,0.05);
+   }
 
-    body {
-      background: var(--bg);
-      font-family: Inter, system-ui, Arial;
-      color: var(--text);
-    }
+   body {
+     background: var(--bg);
+     font-family: Inter, system-ui, Arial;
+     color: var(--text);
+   }
 
-    .navbar {
-      background: #ffffff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
+   .navbar {
+     background: #ffffff;
+     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+   }
 
-    .navbar-brand {
-      color: var(--blue) !important;
-      font-weight: 700;
-    }
+   .navbar-brand {
+     color: var(--blue) !important;
+     font-weight: 700;
+   }
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: var(--card-shadow);
-    }
+   .card {
+     background: var(--panel);
+     border: 1px solid var(--border);
+     border-radius: 12px;
+     box-shadow: var(--card-shadow);
+   }
 
-    .form-control, input[type="file"], textarea {
-      background: #fff;
-      border: 1px solid #ccd4e0;
-      color: #1b1f24;
-    }
+   .form-control, input[type="file"], textarea {
+     background: #fff;
+     border: 1px solid #ccd4e0;
+     color: #1b1f24;
+   }
 
-    .btn-accent {
-      background: var(--blue);
-      color: #fff;
-      border: none;
-      font-weight: 600;
-    }
+   .btn-accent {
+     background: var(--blue);
+     color: #fff;
+     border: none;
+     font-weight: 600;
+   }
 
-    .btn-accent:hover {
-      background: #084db1;
-    }
+   .btn-accent:hover {
+     background: #084db1;
+   }
 
-    .small-muted {
-      color: var(--text-muted);
-    }
+   .small-muted {
+     color: var(--text-muted);
+   }
 
-    table thead {
-      background: var(--blue-light);
-      color: var(--blue);
-      font-weight: 600;
-    }
+   table thead {
+     background: var(--blue-light);
+     color: var(--blue);
+     font-weight: 600;
+   }
 
-    .badge-miss {
-      background: #ff4b4b;
-      color: white;
-      font-weight: 600;
-      border-radius: 6px;
-    }
+   .badge-miss {
+     background: #ff4b4b;
+     color: white;
+     font-weight: 600;
+     border-radius: 6px;
+     padding: 0.25em 0.5em;
+     font-size: 0.75rem;
+   }
 
-    .heat-cell {
-      width: 22px;
-      height: 16px;
-      display: inline-block;
-      margin: 1px;
-      border-radius: 3px;
-    }
+   .heat-cell {
+     width: 22px;
+     height: 16px;
+     display: inline-block;
+     margin: 1px;
+     border-radius: 3px;
+   }
+   
+   .heat-cell-header {
+     width: 22px;
+     height: 16px;
+     display: inline-block;
+     margin: 1px;
+     border-radius: 3px;
+     line-height: 16px;
+     font-size: 10px;
+     text-align: center;
+     color: #333;
+   }
 
-    .list-group-item {
-      border: none !important;
-      border-bottom: 1px solid #eaeaea !important;
-    }
+   .list-group-item {
+     border: none !important;
+     border-bottom: 1px solid #eaeaea !important;
+     padding-top: 0.5rem;
+     padding-bottom: 0.5rem;
+   }
 
-    .muted-pill {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-  </style>
+   .muted-pill {
+     color: var(--text-muted);
+     font-size: 0.85rem;
+   }
+
+   /* Message box styling */
+   #messageBox {
+       position: fixed;
+       top: 20px;
+       right: 20px;
+       z-index: 1050;
+       min-width: 250px;
+       text-align: center;
+   }
+ </style>
 </head>
 
 <body>
 
+<!-- MESSAGE BOX -->
+<div id="messageBox" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+   <div class="d-flex">
+       <div class="toast-body" id="messageText"></div>
+       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+   </div>
+</div>
+
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg py-2">
-  <div class="container">
-    <a class="navbar-brand" href="#">Recruitment Matrix</a>
-    <div class="d-flex gap-2 align-items-center">
-      <span class="small-muted">VARCHAS.Co</span>
-      <button id="exportCsvBtn" class="btn btn-sm btn-outline-primary">Export CSV</button>
-      <a href="#" class="btn btn-sm btn-outline-primary">Docs</a>
-    </div>
-  </div>
+ <div class="container">
+   <a class="navbar-brand" href="#">Recruitment Matrix</a>
+   <div class="d-flex gap-2 align-items-center">
+     <span class="small-muted">VARCHAS.Co</span>
+     <button id="exportCsvBtn" class="btn btn-sm btn-outline-primary">Export CSV</button>
+     <a href="#" class="btn btn-sm btn-outline-primary">Docs</a>
+   </div>
+ </div>
 </nav>
 
 <!-- MAIN CONTENT -->
 <div class="container mt-4">
-  <div class="row g-3">
+ <div class="row g-3">
 
-    <!-- LEFT PANEL -->
-    <div class="col-lg-4">
+   <!-- LEFT PANEL -->
+   <div class="col-lg-4">
 
-      <div class="card p-3">
-        <h5 class="mb-2" style="color:var(--blue)">Uploads & Controls</h5>
+     <div class="card p-3">
+       <h5 class="mb-2" style="color:var(--blue)">Uploads & Controls</h5>
 
-        <label class="form-label small-muted">Upload Job Description (PDF / TXT)</label>
-        <input id="jdFile" type="file" accept=".pdf,.txt" class="form-control mb-2"/>
+       <label class="form-label small-muted">Upload Job Description (PDF / TXT)</label>
+       <input id="jdFile" type="file" accept=".pdf,.txt" class="form-control mb-2"/>
+       <div id="jdStatus" class="small-muted mb-2">JD: Not loaded</div>
 
-        <label class="form-label small-muted">Upload Resumes (.zip, .pdf, .docx, .csv)</label>
-        <input id="resumesFile" type="file" accept=".zip,.csv,.pdf,.docx" multiple class="form-control mb-2"/>
+       <label class="form-label small-muted">Upload Resumes (.zip, .pdf, .docx, .csv)</label>
+       <input id="resumesFile" type="file" accept=".zip,.csv,.pdf,.docx" multiple class="form-control mb-2"/>
+       <div id="resumesStatus" class="small-muted mb-2">Resumes: 0 uploaded</div>
 
-        <div class="d-grid gap-2">
-          <button id="analyzeBtn" class="btn btn-accent">Analyze</button>
-          <button id="clearBtn" class="btn btn-outline-secondary">Clear</button>
-        </div>
+       <div class="d-grid gap-2">
+         <button id="analyzeBtn" class="btn btn-accent" disabled>Analyze Stored Files</button>
+         <button id="clearBtn" class="btn btn-outline-secondary">Clear Status</button>
+       </div>
 
-        <hr>
-        <h6>Status</h6>
-        <div id="statusText" class="small-muted">No analysis run yet</div>
-      </div>
+       <hr>
+       <h6>Status</h6>
+       <div id="statusText" class="small-muted">No analysis run yet</div>
+     </div>
 
-      <!-- TEXT INPUT MODE -->
+     <!-- TEXT INPUT MODE -->
 <div class="card p-3 mt-3">
-  <h6 class="mb-2" style="color:var(--blue)">Paste JD / Resume</h6>
+ <h6 class="mb-2" style="color:var(--blue)">Paste JD / Resume</h6>
 
-  <label class="form-label small-muted">Paste Job Description</label>
-  <textarea id="jdText" class="form-control mb-2" rows="4"
-    placeholder="Paste the JD here..."></textarea>
+ <label class="form-label small-muted">Paste Job Description</label>
+ <textarea id="jdText" class="form-control mb-2" rows="4"
+   placeholder="Paste the JD here..."></textarea>
 
-  <label class="form-label small-muted">Paste Resume Text(s)</label>
-  <textarea id="resumeText" class="form-control mb-2" rows="4"
-    placeholder="Paste one or multiple resumes. 
+ <label class="form-label small-muted">Paste Resume Text(s)</label>
+ <textarea id="resumeText" class="form-control mb-2" rows="4"
+   placeholder="Paste one or multiple resumes.
 Separate resumes using ---"></textarea>
 
-  <button id="analyzeTextBtn" class="btn btn-accent w-100 mt-2">
-    Analyze Text Input
-  </button>
+ <button id="analyzeTextBtn" class="btn btn-accent w-100 mt-2">
+   Analyze Text Input
+ </button>
 </div>
 
-      <!-- FILTER CARD -->
-      <div class="card p-3 mt-3">
-        <h6 class="mb-2">Filters</h6>
-        <label class="form-label small-muted">Min match score: <span id="minScoreVal">50</span>%</label>
-        <input id="minScore" type="range" min="0" max="100" value="50" class="form-range"/>
-      </div>
+     <!-- FILTER CARD -->
+     <div class="card p-3 mt-3">
+       <h6 class="mb-2">Filters</h6>
+       <label class="form-label small-muted">Min match score: <span id="minScoreVal">50</span>%</label>
+       <input id="minScore" type="range" min="0" max="100" value="50" class="form-range"/>
+     </div>
 
-    </div>
+   </div>
 
-    <!-- RIGHT PANEL -->
-    <div class="col-lg-8">
+   <!-- RIGHT PANEL -->
+   <div class="col-lg-8">
 
-      <!-- OVERVIEW -->
-      <div class="card p-3 mb-3">
-        <div class="d-flex justify-content-between">
-          <div>
-            <h5 style="color:var(--blue); margin:0">Overview</h5>
-            <div class="muted-pill">Roles analysed: <span id="rolesCount">0</span></div>
-          </div>
+     <!-- OVERVIEW -->
+     <div class="card p-3 mb-3">
+       <div class="d-flex justify-content-between">
+         <div>
+           <h5 style="color:var(--blue); margin:0">Overview</h5>
+           <div class="muted-pill">Roles analysed: <span id="rolesCount">0</span></div>
+         </div>
 
-          <div class="text-end">
-            <div style="font-size:22px; font-weight:700" id="numProfiles">0</div>
-            <div class="small-muted">Profiles</div>
-          </div>
-        </div>
+         <div class="text-end">
+           <div style="font-size:22px; font-weight:700" id="numProfiles">0</div>
+           <div class="small-muted">Profiles</div>
+         </div>
+       </div>
 
-        <div class="row mt-3">
-          <div class="col-6 text-center">
-            <div class="display-6" id="avgGap">0%</div>
-            <div class="small-muted">Average Gap</div>
-          </div>
+       <div class="row mt-3">
+         <div class="col-6 text-center">
+           <div class="display-6" id="avgGap">0%</div>
+           <div class="small-muted">Average Gap</div>
+         </div>
 
-          <div class="col-6 text-center">
-            <div class="display-6" id="avgMatch">0%</div>
-            <div class="small-muted">Avg Match</div>
-          </div>
-        </div>
-      </div>
+         <div class="col-6 text-center">
+           <div class="display-6" id="avgMatch">0%</div>
+           <div class="small-muted">Avg Match</div>
+         </div>
+       </div>
+     </div>
 
-      <!-- CHARTS + TABLE -->
-      <div class="row g-3">
+     <!-- CHARTS + TABLE -->
+     <div class="row g-3">
 
-        <div class="col-md-6">
-          <div class="card p-3">
-            <h6 style="color:var(--blue)">Skill Gap by Role</h6>
-            <canvas id="skillGapChart" height="200"></canvas>
-          </div>
-        </div>
+       <div class="col-md-6">
+         <div class="card p-3">
+           <h6 style="color:var(--blue)">Skill Gap by Role</h6>
+           <canvas id="skillGapChart" height="200"></canvas>
+         </div>
+       </div>
 
-        <div class="col-md-6">
-          <div class="card p-3">
-            <h6 style="color:var(--blue)">Top Missing Skills</h6>
-            <ul id="missingSkillsList" class="list-group list-group-flush">
-              <li class="list-group-item small-muted">No data</li>
-            </ul>
-          </div>
-        </div>
+       <div class="col-md-6">
+         <div class="card p-3">
+           <h6 style="color:var(--blue)">Top Missing Skills</h6>
+           <ul id="missingSkillsList" class="list-group list-group-flush">
+             <li class="list-group-item small-muted">No data</li>
+           </ul>
+         </div>
+       </div>
 
-        <div class="col-12">
-          <div class="card p-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 style="color:var(--blue)">Candidate Matches</h6>
-              <div class="small-muted">Showing <span id="displayingCount">0</span> of <span id="totalCount">0</span></div>
-            </div>
+       <div class="col-12">
+         <div class="card p-3">
+           <div class="d-flex justify-content-between align-items-center mb-2">
+             <h6 style="color:var(--blue)">Candidate Matches (Ranked)</h6>
+             <div class="small-muted">Showing <span id="displayingCount">0</span> of <span id="totalCount">0</span></div>
+           </div>
 
-            <div class="table-responsive">
-              <table class="table table-hover" id="candidatesTable">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Match %</th>
-                    <th>Missing Skills</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr><td colspan="5" class="small-muted">No results</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+           <div class="table-responsive">
+             <table class="table table-hover" id="candidatesTable">
+               <thead>
+                 <tr>
+                   <th>#</th>
+                   <th>Name</th>
+                   <th>Match %</th>
+                   <th>Missing Skills</th>
+                   <th>Actions</th>
+                 </tr>
+               </thead>
+               <tbody id="candidatesTableBody">
+                 <tr><td colspan="5" class="small-muted">No results</td></tr>
+               </tbody>
+             </table>
+           </div>
+         </div>
+       </div>
 
-        <!-- HEATMAP -->
-        <div class="col-12">
-          <div class="card p-3">
-            <h6 style="color:var(--blue)">Employee Competency Heatmap (preview)</h6>
-            <div id="heatmapPreview" class="mt-2"></div>
-            <div class="small-muted mt-2">Heatmap: darker = better</div>
-          </div>
-        </div>
+       <!-- HEATMAP -->
+       <div class="col-12">
+         <div class="card p-3">
+           <h6 style="color:var(--blue)">Employee Competency Heatmap (preview)</h6>
+           <div id="heatmapPreview" class="mt-2"></div>
+           <div class="small-muted mt-2">Heatmap: darker = better match for that skill</div>
+         </div>
+       </div>
 
-      </div>
+     </div>
 
-    </div>
+   </div>
 
-  </div>
+ </div>
 </div>
-
-<!-- Existing JS logic unchanged -->
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-fetch("https://your-backend-name.onrender.com/api/analyze-text", {
+ // --- Configuration ---
+ // NOTE: You must replace this with your actual deployed backend URL (e.g., your onrender.com address)
+ const API_BASE_URL = "http://localhost:5000/api";
+ let currentCandidates = [];
+ let jdSkills = [];
+ let skillGapChartInstance = null;
+ let minMatchScore = 50;
+
+ // --- Utility Functions ---
+
+ function showMessage(text, isError = false) {
+   const toastEl = document.getElementById('messageBox');
+   const toastBody = document.getElementById('messageText');
+   toastBody.textContent = text;
+   
+   // Set color based on success/error
+   if (isError) {
+     toastEl.classList.remove('bg-primary');
+     toastEl.classList.add('bg-danger');
+   } else {
+     toastEl.classList.remove('bg-danger');
+     toastEl.classList.add('bg-primary');
+   }
+
+   const toast = new bootstrap.Toast(toastEl);
+   toast.show();
+ }
+ 
+ function setStatus(text) {
+     document.getElementById('statusText').textContent = text;
+ }
+
+ function toggleLoading(isLoading) {
+     const btns = document.querySelectorAll('button');
+     btns.forEach(btn => btn.disabled = isLoading);
+     document.getElementById('analyzeBtn').disabled = isLoading || document.getElementById('jdStatus').dataset.loaded !== 'true';
+     if (isLoading) {
+         setStatus('Processing request, please wait...');
+     } else {
+         setStatus('Ready to analyze.');
+     }
+ }
+
+ // Helper to safely fetch with exponential backoff
+ async function safeFetch(url, options = {}, retries = 3) {
+     for (let i = 0; i < retries; i++) {
+         try {
+             const response = await fetch(url, options);
+             const data = await response.json();
+             if (!response.ok) {
+                 throw new Error(data.error || 'Unknown API error');
+             }
+             return data;
+         } catch (error) {
+             if (i === retries - 1) {
+                 throw error;
+             }
+             const delay = Math.pow(2, i) * 1000;
+             await new Promise(resolve => setTimeout(resolve, delay));
+         }
+     }
+ }
+
+ // --- File Upload Handlers ---
+
+ document.getElementById('jdFile').addEventListener('change', async (event) => {
+   const file = event.target.files[0];
+   if (!file) return;
+
+   const formData = new FormData();
+   formData.append('jd', file);
+   
+   toggleLoading(true);
+   try {
+       const data = await safeFetch(`${API_BASE_URL}/upload_jd`, {
+           method: 'POST',
+           body: formData,
+       });
+
+       document.getElementById('jdStatus').textContent = `JD: ${file.name} (${data.jd_word_count} words)`;
+       document.getElementById('jdStatus').dataset.loaded = 'true';
+       showMessage('JD uploaded successfully.');
+   } catch (error) {
+       showMessage(`JD Upload Error: ${error.message}`, true);
+       document.getElementById('jdStatus').dataset.loaded = 'false';
+   } finally {
+       toggleLoading(false);
+   }
+ });
+
+ document.getElementById('resumesFile').addEventListener('change', async (event) => {
+   const files = event.target.files;
+   if (files.length === 0) return;
+
+   const formData = new FormData();
+   for (const file of files) {
+       formData.append('resumes', file);
+   }
+   
+   toggleLoading(true);
+   try {
+       const data = await safeFetch(`${API_BASE_URL}/upload_resumes`, {
+           method: 'POST',
+           body: formData,
+       });
+
+       document.getElementById('resumesStatus').textContent = `Resumes: ${data.parsed_count} uploaded`;
+       showMessage(`${data.parsed_count} resumes uploaded and parsed.`);
+   } catch (error) {
+       showMessage(`Resumes Upload Error: ${error.message}`, true);
+   } finally {
+       toggleLoading(false);
+   }
+ });
+
+ // --- Main Analysis Functions ---
+
+ async function runAnalysis(endpoint, formData = null) {
+     toggleLoading(true);
+     try {
+         const options = { method: 'GET' };
+         if (formData) {
+             options.method = 'POST';
+             options.body = formData;
+             options.headers = { 'Content-Type': 'application/json' };
+         }
+         
+         const data = await safeFetch(endpoint, options);
+         
+         currentCandidates = data.candidates || data.results;
+         jdSkills = data.jd.ranked.map(s => s[0]);
+         
+         // CRITICAL: Client-side ranking (sorting)
+         currentCandidates.sort((a, b) =>
+             b.match.match_score_percent - a.match.match_score_percent
+         );
+
+         renderDashboard();
+         showMessage('Analysis complete. Results displayed.');
+
+     } catch (error) {
+         showMessage(`Analysis Failed: ${error.message}`, true);
+     } finally {
+         toggleLoading(false);
+     }
+ }
+ 
+ document.getElementById('analyzeBtn').addEventListener('click', () => {
+     runAnalysis(`${API_BASE_URL}/analyze`);
+ });
+
+ document.getElementById('analyzeTextBtn').addEventListener('click', () => {
+   const jdText = document.getElementById('jdText').value.trim();
+   const resumeText = document.getElementById('resumeText').value.trim();
+
+   if (!jdText || !resumeText) {
+       showMessage("Please paste both JD text and at least one Resume text.", true);
+       return;
+   }
+
+   const payload = JSON.stringify({
+       jd_text: jdText,
+       resume_text: resumeText
+   });
+   
+   runAnalysis(`${API_BASE_URL}/analyze-text`, payload);
+ });
+ 
+ // --- Dashboard Rendering ---
+ 
+ function renderDashboard() {
+     if (!currentCandidates.length) {
+         clearDashboard();
+         return;
+     }
+
+     // 1. Calculate Aggregates
+     const totalScores = currentCandidates.reduce((sum, c) => sum + c.match.match_score_percent, 0);
+     const avgMatch = totalScores / currentCandidates.length;
+
+     document.getElementById('numProfiles').textContent = currentCandidates.length;
+     document.getElementById('totalCount').textContent = currentCandidates.length;
+     document.getElementById('avgMatch').textContent = `${avgMatch.toFixed(1)}%`;
+     document.getElementById('avgGap').textContent = `${(100 - avgMatch).toFixed(1)}%`;
+     document.getElementById('rolesCount').textContent = jdSkills.length > 0 ? '1' : '0';
+
+     // 2. Filter & Render Table
+     renderCandidatesTable();
+
+     // 3. Render Charts and Heatmap
+     renderSkillGapChart();
+     renderTopMissingSkills();
+     renderHeatmap();
+ }
+
+ function renderCandidatesTable() {
+     const tableBody = document.getElementById('candidatesTableBody');
+     tableBody.innerHTML = '';
+     
+     const filteredCandidates = currentCandidates.filter(c => c.match.match_score_percent >= minMatchScore);
+
+     document.getElementById('displayingCount').textContent = filteredCandidates.length;
+
+     if (filteredCandidates.length === 0) {
+         tableBody.innerHTML = '<tr><td colspan="5" class="small-muted">No candidates meet the minimum match score.</td></tr>';
+         return;
+     }
+     
+     filteredCandidates.forEach((cand, index) => {
+         const tr = document.createElement('tr');
+         
+         // Get top 3 missing skills for display
+         const topMissing = cand.match.missing_skills.slice(0, 3);
+         const missingCount = cand.match.missing_skills.length;
+
+         tr.innerHTML = `
+           <td>${index + 1}</td>
+           <td>${cand.name}</td>
+           <td class="fw-bold">${cand.match.match_score_percent.toFixed(1)}%</td>
+           <td>
+               ${topMissing.map(s => `<span class="badge badge-miss me-1">${s}</span>`).join('')}
+               ${missingCount > 3 ? `<span class="small-muted">(+${missingCount - 3} others)</span>` : ''}
+           </td>
+           <td>
+             <button class="btn btn-sm btn-outline-info" onclick="showDetailsModal('${btoa(JSON.stringify(cand))}')">Details</button>
+           </td>
+         `;
+         tableBody.appendChild(tr);
+     });
+ }
+ 
+ function renderSkillGapChart() {
+   const skillCounts = {};
+   currentCandidates.forEach(c => {
+       c.match.missing_skills.forEach(skill => {
+           skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+       });
+   });
+
+   const sortedGaps = Object.entries(skillCounts)
+       .sort(([, a], [, b]) => b - a)
+       .slice(0, 5); // Top 5 missing skills
+
+   const labels = sortedGaps.map(([skill]) => skill);
+   const data = sortedGaps.map(([, count]) => count);
+
+   const ctx = document.getElementById('skillGapChart').getContext('2d');
+   if (skillGapChartInstance) {
+       skillGapChartInstance.destroy();
+   }
+   skillGapChartInstance = new Chart(ctx, {
+       type: 'bar',
+       data: {
+           labels: labels,
+           datasets: [{
+               label: 'Candidates Missing Skill',
+               data: data,
+               backgroundColor: 'rgba(255, 99, 132, 0.5)',
+               borderColor: 'rgba(255, 99, 132, 1)',
+               borderWidth: 1
+           }]
+       },
+       options: {
+           responsive: true,
+           maintainAspectRatio: false,
+           scales: {
+               y: { beginAtZero: true, ticks: { precision: 0 } }
+           },
+           plugins: { legend: { display: false } }
+       }
+   });
+ }
+
+ function renderTopMissingSkills() {
+   const skillCounts = {};
+   currentCandidates.forEach(c => {
+       c.match.missing_skills.forEach(skill => {
+           skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+       });
+   });
+
+   const sortedGaps = Object.entries(skillCounts)
+       .sort(([, a], [, b]) => b - a)
+       .slice(0, 5); // Top 5 missing skills
+
+   const list = document.getElementById('missingSkillsList');
+   list.innerHTML = '';
+
+   if (sortedGaps.length === 0) {
+       list.innerHTML = '<li class="list-group-item small-muted">No missing skills detected.</li>';
+       return;
+   }
+
+   sortedGaps.forEach(([skill, count]) => {
+       const li = document.createElement('li');
+       li.className = 'list-group-item d-flex justify-content-between align-items-center';
+       li.innerHTML = `
+           <span>${skill}</span>
+           <span class="badge bg-danger rounded-pill">${count}</span>
+       `;
+       list.appendChild(li);
+   });
+ }
+ 
+ function getHeatColor(score) {
+     if (score === 0) return 'rgb(240, 240, 240)'; // Lightest for 0
+     const intensity = Math.min(1, score / 10); // Normalize score for color (max score expected to be around 5-10)
+     const r = Math.round(255 - 200 * intensity);
+     const g = Math.round(255 - 200 * intensity);
+     const b = Math.round(255 - 50 * intensity);
+     return `rgb(${r}, ${g}, ${b})`; // Darker means higher score
+ }
+
+ function renderHeatmap() {
+   const heatmapDiv = document.getElementById('heatmapPreview');
+   heatmapDiv.innerHTML = '';
+   
+   // Use the JD's required skills as the columns
+   const skills = jdSkills;
+   
+   // Header Row (Skills)
+   const headerRow = document.createElement('div');
+   headerRow.className = 'd-flex mb-1 ms-4';
+   headerRow.innerHTML = skills.map(s => `<div class="heat-cell-header" title="${s}">${s.charAt(0)}</div>`).join('');
+   heatmapDiv.appendChild(headerRow);
+   
+   // Candidate Rows
+   currentCandidates.forEach(cand => {
+       const row = document.createElement('div');
+       row.className = 'd-flex align-items-center mb-1';
+       
+       // Name Label (only show first few chars)
+       const nameLabel = document.createElement('div');
+       nameLabel.className = 'small-muted me-2 text-truncate';
+       nameLabel.style.width = '50px';
+       nameLabel.textContent = cand.name.substring(0, 4) + '...';
+       nameLabel.title = cand.name;
+       row.appendChild(nameLabel);
+
+       // Cells
+       skills.forEach(skill => {
+           const score = cand.resume_results.matches[skill] ? cand.resume_results.matches[skill].score : 0;
+           const cell = document.createElement('div');
+           cell.className = 'heat-cell';
+           cell.style.backgroundColor = getHeatColor(score);
+           cell.title = `${skill}: Score ${score.toFixed(2)}`;
+           row.appendChild(cell);
+       });
+       
+       heatmapDiv.appendChild(row);
+   });
+ }
+
+ // --- Filter and Clear ---
+ 
+ document.getElementById('minScore').addEventListener('input', (e) => {
+     minMatchScore = parseInt(e.target.value, 10);
+     document.getElementById('minScoreVal').textContent = minMatchScore;
+     if (currentCandidates.length > 0) {
+         renderCandidatesTable(); // Re-render table with new filter
+     }
+ });
+
+ document.getElementById('clearBtn').addEventListener('click', () => {
+     clearDashboard();
+     document.getElementById('jdFile').value = '';
+     document.getElementById('resumesFile').value = '';
+     document.getElementById('jdStatus').textContent = 'JD: Not loaded';
+     document.getElementById('jdStatus').dataset.loaded = 'false';
+     document.getElementById('resumesStatus').textContent = 'Resumes: 0 uploaded';
+     showMessage('Dashboard and file status cleared.');
+ });
+ 
+ function clearDashboard() {
+     currentCandidates = [];
+     jdSkills = [];
+     document.getElementById('numProfiles').textContent = '0';
+     document.getElementById('totalCount').textContent = '0';
+     document.getElementById('displayingCount').textContent = '0';
+     document.getElementById('avgMatch').textContent = '0%';
+     document.getElementById('avgGap').textContent = '0%';
+     document.getElementById('rolesCount').textContent = '0';
+     document.getElementById('candidatesTableBody').innerHTML = '<tr><td colspan="5" class="small-muted">No results</td></tr>';
+     document.getElementById('missingSkillsList').innerHTML = '<li class="list-group-item small-muted">No data</li>';
+     document.getElementById('heatmapPreview').innerHTML = '';
+     if (skillGapChartInstance) {
+       skillGapChartInstance.destroy();
+       skillGapChartInstance = null;
+     }
+ }
+
+ // --- Modal for Details ---
+ 
+ function showDetailsModal(b64data) {
+   // A simplified placeholder for a modal since Bootstrap modal markup is extensive
+   // In a real app, you would have a modal component here.
+   const cand = JSON.parse(atob(b64data));
+   let detailsHtml = `
+     <p class="fw-bold">Match Score: ${cand.match.match_score_percent.toFixed(1)}%</p>
+     <h6>Matched Skills:</h6>
+     <p class="text-success">${cand.match.matched_skills.join(', ')}</p>
+     <h6>Missing Skills:</h6>
+     <p class="text-danger">${cand.match.missing_skills.join(', ')}</p>
+     <h6>Extra Skills:</h6>
+     <p class="text-secondary">${cand.match.extra_skills.join(', ')}</p>
+     <hr>
+     <h6>Extracted Skills with Score:</h6>
+     <ul class="list-unstyled small-muted">
+       ${cand.resume_results.ranked.map(s => `<li>${s[0]}: ${s[1]} (Count: ${s[2]})</li>`).join('')}
+     </ul>
+   `;
+   
+   // Using a simple alert for demo purposes; replace with a proper Bootstrap Modal
+   // Due to the no-alert rule, we'll use the message box for a quick preview placeholder:
+   showMessage(`Details for ${cand.name}:\nScore: ${cand.match.match_score_percent.toFixed(1)}%\nMissing: ${cand.match.missing_skills.slice(0, 3).join(', ')}...`);
+   
+   // In a real application, you would use:
+   /*
+   const modalBody = document.getElementById('candidateDetailsBody');
+   modalBody.innerHTML = detailsHtml;
+   const modal = new bootstrap.Modal(document.getElementById('candidateDetailsModal'));
+   modal.show();
+   */
+   
+   // Since we cannot use a full modal, let's temporarily log the details
+   console.log(`Candidate Details: ${cand.name}`, cand);
+ }
+
+ // Attach modal function to the window object so it can be called from onclick
+ window.showDetailsModal = showDetailsModal;
+ 
 </script>
+
+<!-- NOTE: The script placeholder at the bottom was removed and replaced with the full JS logic. -->
 
 </body>
 </html>
-
-
