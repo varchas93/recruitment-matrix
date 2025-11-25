@@ -368,7 +368,7 @@ Separate resumes using ---"></textarea>
    
    toggleLoading(true);
    try {
-       const data = await safeFetch(`${API_BASE_URL}/upload_jd`, {
+       const data = await safeFetch(`${API_BASE_URL}api/upload_jd`, {
            method: 'POST',
            body: formData,
        });
@@ -395,7 +395,7 @@ Separate resumes using ---"></textarea>
    
    toggleLoading(true);
    try {
-       const data = await safeFetch(`${API_BASE_URL}/upload_resumes`, {
+       const data = await safeFetch(`${API_BASE_URL}api/upload_resumes`, {
            method: 'POST',
            body: formData,
        });
@@ -442,7 +442,7 @@ Separate resumes using ---"></textarea>
  }
  
  document.getElementById('analyzeBtn').addEventListener('click', () => {
-     runAnalysis(`${API_BASE_URL}/analyze`);
+     runAnalysis(`${API_BASE_URL}api/analyze`);
  });
 
  document.getElementById('analyzeTextBtn').addEventListener('click', () => {
@@ -459,7 +459,7 @@ Separate resumes using ---"></textarea>
        resume_text: resumeText
    });
    
-   runAnalysis(`${API_BASE_URL}/analyze-text`, payload);
+   runAnalysis(`${API_BASE_URL}api/analyze-text`, payload);
  });
  
  // --- Dashboard Rendering ---
@@ -731,5 +731,6 @@ Separate resumes using ---"></textarea>
 
 </body>
 </html>
+
 
 
