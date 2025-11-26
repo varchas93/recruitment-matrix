@@ -1,4 +1,5 @@
 # utils/parser.py
+import re
 import os
 import zipfile
 import tempfile
@@ -63,23 +64,44 @@ def _extract_from_zip(zip_path: str, out_dir: str) -> List[str]:
         print(f"Zip extraction error for {zip_path}: {e}")
     return saved
 
-def extract_email(text):
-    email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
-    match = re.search(email_pattern, text)
-    return match.group(0) if match else None
 def parse_resumes_upload(paths: list, upload_dir: str) -> list:
     candidates = []
     tmpdir = tempfile.mkdtemp(dir=upload_dir)
+
     for p in paths:
         ext = os.path.splitext(p)[1].lower()
+
+        # 1) Handle ZIP files
         if ext == ".zip":
-            extracted = _extract_from_zip(p, tmpdir)
-            for e in extracted:
-                text = extract_text_from_file(e)
-                if text:
-                    candidates.append({"name": os.path.basename(e), "text": text})
+            extracted_files = _extract_from_zip(p, tmpdir)
+            for file in extracted_files:
+                text = extract_text_from_file(file)
+                if not text:
+                    continue
+
+                email = extract_email(text)
+
+                candidates.append({
+                    "name": os.path.splitext(os.path.basename(file))[0],
+                    "email": email,
+                    "text": text,
+                    "skills": []     # add skill extractor here later
+                })
+
+        # 2) Handle regular resume files
         else:
             text = extract_text_from_file(p)
-            if text:
-                candidates.append({"name": os.path.basename(p), "text": text})
+            if not text:
+                continue
+
+            email = extract_email(text)
+
+            candidates.append({
+                "name": os.path.splitext(os.path.basename(p))[0],
+                "email": email,
+                "text": text,
+                "skills": []       # add skill extractor here later
+            })
+
     return candidates
+
