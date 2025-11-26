@@ -263,9 +263,9 @@ Separate resumes using ---"></textarea>
                  <tr>
                    <th>#</th>
                    <th>Name</th>
+                   <th>Email</th>
                    <th>Match %</th>
                    <th>Missing Skills</th>
-                   <th>Actions</th>
                  </tr>
                </thead>
                <tbody id="candidatesTableBody">
@@ -489,17 +489,32 @@ Separate resumes using ---"></textarea>
      renderHeatmap();
  }
 
- function renderCandidatesTable() {
-     const tableBody = document.getElementById('candidatesTableBody');
-     tableBody.innerHTML = '';
-     
-     const filteredCandidates = currentCandidates.filter(c => c.match.match_score_percent >= minMatchScore);
+ function renderCandidatesTable(candidates) {
+    const tbody = document.getElementById("candidatesTableBody");
+    tbody.innerHTML = "";
 
-     document.getElementById('displayingCount').textContent = filteredCandidates.length;
+    if (!candidates || candidates.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="small-muted text-center">No results</td>
+            </tr>
+        `;
+        return;
+    }
 
-     if (filteredCandidates.length === 0) {
-         tableBody.innerHTML = '<tr><td colspan="5" class="small-muted">No candidates meet the minimum match score.</td></tr>';
-         return;
+    candidates.forEach((c, i) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${c.name || "N/A"}</td>
+            <td>${c.email || "N/A"}</td>
+            <td>${c.match_percent != null ? c.match_percent + "%" : "N/A"}</td>
+            <td>${(c.missing_skills && c.missing_skills.length > 0) ? c.missing_skills.join(", ") : "None"}</td>
+        `;
+
+        tbody.appendChild(row);
+    });
      }
      
      filteredCandidates.forEach((cand, index) => {
@@ -731,6 +746,7 @@ Separate resumes using ---"></textarea>
 
 </body>
 </html>
+
 
 
 
