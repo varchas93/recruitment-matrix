@@ -1,11 +1,10 @@
-Flask==2.3.2
-werkzeug==3.0.1
+Flask==2.2.5
+werkzeug==2.3.7
 flask-cors==4.0.0
 
 python-docx==0.8.11
 
-pypdf==3.17.4
-pdfplumber==0.10.2
+pypdf==3.9.0
+pdfminer.six==20221105
 
-pillow==9.5.0
-rapidfuzz==3.0.0
+regex==2023.10.3
