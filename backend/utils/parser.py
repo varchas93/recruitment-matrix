@@ -64,6 +64,13 @@ def _extract_from_zip(zip_path: str, out_dir: str) -> List[str]:
         print(f"Zip extraction error for {zip_path}: {e}")
     return saved
 
+# ✅ FIXED — Added email extractor
+def extract_email(text: str):
+    pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+    match = re.search(pattern, text)
+    return match.group(0) if match else None
+
+# ✅ FIXED — Correct resume parsing with email support
 def parse_resumes_upload(paths: list, upload_dir: str) -> list:
     candidates = []
     tmpdir = tempfile.mkdtemp(dir=upload_dir)
@@ -71,7 +78,7 @@ def parse_resumes_upload(paths: list, upload_dir: str) -> list:
     for p in paths:
         ext = os.path.splitext(p)[1].lower()
 
-        # 1) Handle ZIP files
+        # Handle ZIP files
         if ext == ".zip":
             extracted_files = _extract_from_zip(p, tmpdir)
             for file in extracted_files:
@@ -85,10 +92,10 @@ def parse_resumes_upload(paths: list, upload_dir: str) -> list:
                     "name": os.path.splitext(os.path.basename(file))[0],
                     "email": email,
                     "text": text,
-                    "skills": []     # add skill extractor here later
+                    "skills": []
                 })
 
-        # 2) Handle regular resume files
+        # Handle regular resume files
         else:
             text = extract_text_from_file(p)
             if not text:
@@ -100,8 +107,7 @@ def parse_resumes_upload(paths: list, upload_dir: str) -> list:
                 "name": os.path.splitext(os.path.basename(p))[0],
                 "email": email,
                 "text": text,
-                "skills": []       # add skill extractor here later
+                "skills": []
             })
 
     return candidates
-
