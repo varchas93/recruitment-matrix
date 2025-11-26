@@ -2,25 +2,32 @@ import os
 import zipfile
 import tempfile
 from typing import List
-import pdfplumber
+from pypdf import PdfReader  # USE pypdf instead of pdfplumber
 import docx
+
 
 def extract_text_from_pdf(path: str) -> str:
     text_parts = []
-    with pdfplumber.open(path) as pdf:
-        for page in pdf.pages:
+    try:
+        reader = PdfReader(path)
+        for page in reader.pages:
             txt = page.extract_text()
             if txt:
                 text_parts.append(txt)
+    except Exception as e:
+        print("PDF parsing error:", e)
     return "\n".join(text_parts)
+
 
 def extract_text_from_docx(path: str) -> str:
     doc = docx.Document(path)
     return "\n".join([p.text for p in doc.paragraphs if p.text])
 
+
 def extract_text_from_txt(path: str) -> str:
     with open(path, "r", encoding="utf-8", errors="ignore") as rf:
         return rf.read()
+
 
 def extract_text_from_file(path: str) -> str:
     path = os.path.abspath(path)
@@ -34,11 +41,10 @@ def extract_text_from_file(path: str) -> str:
     else:
         return ""
 
+
 def parse_jd_file(path: str) -> str:
-    """
-    Parse a JD file (pdf/docx/txt) and return plain text.
-    """
     return extract_text_from_file(path) or ""
+
 
 def _extract_from_zip(zip_path: str, out_dir: str) -> List[str]:
     saved = []
@@ -50,11 +56,8 @@ def _extract_from_zip(zip_path: str, out_dir: str) -> List[str]:
                 saved.append(full)
     return saved
 
+
 def parse_resumes_upload(paths: list, upload_dir: str) -> list:
-    """
-    paths: list of file paths (pdf/docx/txt/zip)
-    Returns: list of candidate dicts: {'name': filename, 'text': extracted_text}
-    """
     candidates = []
     tmpdir = tempfile.mkdtemp(dir=upload_dir)
     for p in paths:
