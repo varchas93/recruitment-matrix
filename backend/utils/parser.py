@@ -63,6 +63,10 @@ def _extract_from_zip(zip_path: str, out_dir: str) -> List[str]:
         print(f"Zip extraction error for {zip_path}: {e}")
     return saved
 
+def extract_email(text):
+    email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+    match = re.search(email_pattern, text)
+    return match.group(0) if match else None
 def parse_resumes_upload(paths: list, upload_dir: str) -> list:
     candidates = []
     tmpdir = tempfile.mkdtemp(dir=upload_dir)
