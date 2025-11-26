@@ -489,9 +489,11 @@ Separate resumes using ---"></textarea>
      renderHeatmap();
  }
 
- function renderCandidatesTable(candidates) {
+ function renderCandidatesTable() {
     const tbody = document.getElementById("candidatesTableBody");
     tbody.innerHTML = "";
+
+    const candidates = currentCandidates; // always use global analyzed candidates
 
     if (!candidates || candidates.length === 0) {
         tbody.innerHTML = `
@@ -509,13 +511,16 @@ Separate resumes using ---"></textarea>
             <td>${i + 1}</td>
             <td>${c.name || "N/A"}</td>
             <td>${c.email || "N/A"}</td>
-            <td>${c.match_percent != null ? c.match_percent + "%" : "N/A"}</td>
-            <td>${(c.missing_skills && c.missing_skills.length > 0) ? c.missing_skills.join(", ") : "None"}</td>
+            <td>${c.match.match_score_percent?.toFixed(1) ?? "N/A"}%</td>
+            <td>${c.match.missing_skills.join(", ") || "None"}</td>
         `;
 
         tbody.appendChild(row);
     });
-     }
+
+    // update count
+    document.getElementById("displayingCount").textContent = candidates.length;
+ }
      
      filteredCandidates.forEach((cand, index) => {
          const tr = document.createElement('tr');
@@ -746,6 +751,7 @@ Separate resumes using ---"></textarea>
 
 </body>
 </html>
+
 
 
 
