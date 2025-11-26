@@ -1,10 +1,10 @@
+# utils/parser.py
 import os
 import zipfile
 import tempfile
 from typing import List
-from pypdf import PdfReader  # USE pypdf instead of pdfplumber
+from pypdf import PdfReader
 import docx
-
 
 def extract_text_from_pdf(path: str) -> str:
     text_parts = []
@@ -15,19 +15,25 @@ def extract_text_from_pdf(path: str) -> str:
             if txt:
                 text_parts.append(txt)
     except Exception as e:
-        print("PDF parsing error:", e)
+        # Print error to logs (Render will capture)
+        print(f"PDF parsing error for {path}: {e}")
     return "\n".join(text_parts)
 
-
 def extract_text_from_docx(path: str) -> str:
-    doc = docx.Document(path)
-    return "\n".join([p.text for p in doc.paragraphs if p.text])
-
+    try:
+        doc = docx.Document(path)
+        return "\n".join([p.text for p in doc.paragraphs if p.text])
+    except Exception as e:
+        print(f"DOCX parsing error for {path}: {e}")
+        return ""
 
 def extract_text_from_txt(path: str) -> str:
-    with open(path, "r", encoding="utf-8", errors="ignore") as rf:
-        return rf.read()
-
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as rf:
+            return rf.read()
+    except Exception as e:
+        print(f"TXT read error for {path}: {e}")
+        return ""
 
 def extract_text_from_file(path: str) -> str:
     path = os.path.abspath(path)
@@ -41,21 +47,21 @@ def extract_text_from_file(path: str) -> str:
     else:
         return ""
 
-
 def parse_jd_file(path: str) -> str:
     return extract_text_from_file(path) or ""
 
-
 def _extract_from_zip(zip_path: str, out_dir: str) -> List[str]:
     saved = []
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        z.extractall(out_dir)
-        for fname in z.namelist():
-            full = os.path.join(out_dir, fname)
-            if os.path.isfile(full):
-                saved.append(full)
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as z:
+            z.extractall(out_dir)
+            for fname in z.namelist():
+                full = os.path.join(out_dir, fname)
+                if os.path.isfile(full):
+                    saved.append(full)
+    except Exception as e:
+        print(f"Zip extraction error for {zip_path}: {e}")
     return saved
-
 
 def parse_resumes_upload(paths: list, upload_dir: str) -> list:
     candidates = []
