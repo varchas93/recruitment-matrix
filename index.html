@@ -158,7 +158,7 @@
 
        <label class="form-label small-muted">Upload Job Description (PDF / TXT)</label>
        <input id="jdFile" type="file" accept=".pdf,.txt" class="form-control mb-2"/>
-       <div id="jdStatus" class="small-muted mb-2">JD: Not loaded</div>
+       <div id="jdStatus" class="small-muted mb-2" data-loaded="false">JD: Not loaded</div>
 
        <label class="form-label small-muted">Upload Resumes (.zip, .pdf, .docx, .csv)</label>
        <input id="resumesFile" type="file" accept=".zip,.csv,.pdf,.docx" multiple class="form-control mb-2"/>
@@ -296,7 +296,7 @@ Separate resumes using ---"></textarea>
 <script>
  // --- Configuration ---
  // NOTE: You must replace this with your actual deployed backend URL (e.g., your onrender.com address)
- const API_BASE_URL = "https://recruitment-matrix.onrender.com/";
+ const API_BASE_URL = "https://recruitment-matrix.onrender.com/"; // <-- trailing slash is required
  let currentCandidates = [];
  let jdSkills = [];
  let skillGapChartInstance = null;
@@ -360,61 +360,61 @@ Separate resumes using ---"></textarea>
  // --- File Upload Handlers ---
 
  document.getElementById('jdFile').addEventListener('change', async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+   const file = event.target.files[0];
+   if (!file) return;
 
-    const formData = new FormData();
-    formData.append('jd', file);
+   const formData = new FormData();
+   formData.append('jd', file);
+   
+   toggleLoading(true);
+   try {
+       const response = await fetch(`${API_BASE_URL}api/upload_jd`, {
+           method: 'POST',
+           body: formData
+       });
 
-    toggleLoading(true);
-    try {
-        const response = await fetch(`${API_BASE_URL}api/upload_jd`, {
-            method: 'POST',
-            body: formData
-        });
+       const data = await response.json();
+       if (!response.ok) throw new Error(data.error || 'Upload failed');
 
-        const data = await response.json();
-
-        if (!response.ok) throw new Error(data.error);
-
-        document.getElementById('jdStatus').textContent =
-            `JD: ${file.name} (${data.jd_word_count} words)`;
-        document.getElementById('jdStatus').dataset.loaded = 'true';
-        document.getElementById('analyzeBtn').disabled = false;
-
-        showMessage("JD uploaded successfully.");
-    } catch (err) {
-        showMessage("JD Upload Error: " + err.message, true);
-    }
-    toggleLoading(false);
-});
+       document.getElementById('jdStatus').textContent = `JD: ${file.name} (${data.jd_word_count} words)`;
+       document.getElementById('jdStatus').dataset.loaded = 'true';
+       document.getElementById('analyzeBtn').disabled = false;
+       showMessage('JD uploaded successfully.');
+   } catch (error) {
+       showMessage(`JD Upload Error: ${error.message}`, true);
+       document.getElementById('jdStatus').dataset.loaded = 'false';
+   } finally {
+       toggleLoading(false);
+   }
+ });
 
  document.getElementById('resumesFile').addEventListener('change', async (event) => {
-    const files = event.target.files;
-    if (files.length === 0) return;
+   const files = event.target.files;
+   if (files.length === 0) return;
 
-    const formData = new FormData();
-    for (const f of files) formData.append('resumes', f);
+   const formData = new FormData();
+   for (const file of files) {
+       formData.append('resumes', file);
+   }
+   
+   toggleLoading(true);
+   try {
+       const response = await fetch(`${API_BASE_URL}api/upload_resumes`, {
+           method: 'POST',
+           body: formData
+       });
 
-    toggleLoading(true);
-    try {
-        const response = await fetch(`${API_BASE_URL}api/upload_resumes`, {
-            method: 'POST',
-            body: formData
-        });
+       const data = await response.json();
+       if (!response.ok) throw new Error(data.error || 'Upload failed');
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-
-        document.getElementById('resumesStatus').textContent =
-            `Resumes: ${data.parsed_count} uploaded`;
-
-        showMessage(`${data.parsed_count} resumes uploaded.`);
-    } catch (err) {
-        showMessage("Resume Upload Error: " + err.message, true);
-    }
-    toggleLoading(false);
-});
+       document.getElementById('resumesStatus').textContent = `Resumes: ${data.parsed_count} uploaded`;
+       showMessage(`${data.parsed_count} resumes uploaded and parsed.`);
+   } catch (error) {
+       showMessage(`Resumes Upload Error: ${error.message}`, true);
+   } finally {
+       toggleLoading(false);
+   }
+ });
 
  // --- Main Analysis Functions ---
 
@@ -430,13 +430,15 @@ Separate resumes using ---"></textarea>
          
          const data = await safeFetch(endpoint, options);
          
-         currentCandidates = data.candidates || data.results;
-         jdSkills = data.jd.ranked.map(s => s[0]);
-         
-         // CRITICAL: Client-side ranking (sorting)
-         currentCandidates.sort((a, b) =>
-             b.match.match_score_percent - a.match.match_score_percent
-         );
+         currentCandidates = data.candidates || data.results || [];
+         jdSkills = (data.jd && data.jd.ranked) ? data.jd.ranked.map(s => s[0]) : [];
+
+         // CRITICAL: Client-side ranking (sorting) when structure exists
+         if (currentCandidates.length && currentCandidates[0].match && currentCandidates[0].match.match_score_percent != null) {
+             currentCandidates.sort((a, b) =>
+                 b.match.match_score_percent - a.match.match_score_percent
+             );
+         }
 
          renderDashboard();
          showMessage('Analysis complete. Results displayed.');
@@ -478,7 +480,7 @@ Separate resumes using ---"></textarea>
      }
 
      // 1. Calculate Aggregates
-     const totalScores = currentCandidates.reduce((sum, c) => sum + c.match.match_score_percent, 0);
+     const totalScores = currentCandidates.reduce((sum, c) => sum + (c.match?.match_score_percent || 0), 0);
      const avgMatch = totalScores / currentCandidates.length;
 
      document.getElementById('numProfiles').textContent = currentCandidates.length;
@@ -518,8 +520,8 @@ Separate resumes using ---"></textarea>
             <td>${i + 1}</td>
             <td>${c.name || "N/A"}</td>
             <td>${c.email || "N/A"}</td>
-            <td>${c.match.match_score_percent?.toFixed(1) ?? "N/A"}%</td>
-            <td>${c.match.missing_skills.join(", ") || "None"}</td>
+            <td>${(c.match?.match_score_percent != null) ? c.match.match_score_percent.toFixed(1) + '%' : "N/A"}</td>
+            <td>${(c.match?.missing_skills && c.match.missing_skills.length) ? c.match.missing_skills.join(", ") : "None"}</td>
         `;
 
         tbody.appendChild(row);
@@ -528,34 +530,11 @@ Separate resumes using ---"></textarea>
     // update count
     document.getElementById("displayingCount").textContent = candidates.length;
  }
-     
-     filteredCandidates.forEach((cand, index) => {
-         const tr = document.createElement('tr');
-         
-         // Get top 3 missing skills for display
-         const topMissing = cand.match.missing_skills.slice(0, 3);
-         const missingCount = cand.match.missing_skills.length;
 
-         tr.innerHTML = `
-           <td>${index + 1}</td>
-           <td>${cand.name}</td>
-           <td class="fw-bold">${cand.match.match_score_percent.toFixed(1)}%</td>
-           <td>
-               ${topMissing.map(s => `<span class="badge badge-miss me-1">${s}</span>`).join('')}
-               ${missingCount > 3 ? `<span class="small-muted">(+${missingCount - 3} others)</span>` : ''}
-           </td>
-           <td>
-             <button class="btn btn-sm btn-outline-info" onclick="showDetailsModal('${btoa(JSON.stringify(cand))}')">Details</button>
-           </td>
-         `;
-         tableBody.appendChild(tr);
-     });
- }
- 
  function renderSkillGapChart() {
    const skillCounts = {};
    currentCandidates.forEach(c => {
-       c.match.missing_skills.forEach(skill => {
+       (c.match?.missing_skills || []).forEach(skill => {
            skillCounts[skill] = (skillCounts[skill] || 0) + 1;
        });
    });
@@ -597,7 +576,7 @@ Separate resumes using ---"></textarea>
  function renderTopMissingSkills() {
    const skillCounts = {};
    currentCandidates.forEach(c => {
-       c.match.missing_skills.forEach(skill => {
+       (c.match?.missing_skills || []).forEach(skill => {
            skillCounts[skill] = (skillCounts[skill] || 0) + 1;
        });
    });
@@ -656,13 +635,13 @@ Separate resumes using ---"></textarea>
        const nameLabel = document.createElement('div');
        nameLabel.className = 'small-muted me-2 text-truncate';
        nameLabel.style.width = '50px';
-       nameLabel.textContent = cand.name.substring(0, 4) + '...';
+       nameLabel.textContent = (cand.name || '').substring(0, 4) + '...';
        nameLabel.title = cand.name;
        row.appendChild(nameLabel);
 
        // Cells
        skills.forEach(skill => {
-           const score = cand.resume_results.matches[skill] ? cand.resume_results.matches[skill].score : 0;
+           const score = (cand.resume_results?.matches && cand.resume_results.matches[skill]) ? cand.resume_results.matches[skill].score : 0;
            const cell = document.createElement('div');
            cell.className = 'heat-cell';
            cell.style.backgroundColor = getHeatColor(score);
@@ -715,37 +694,8 @@ Separate resumes using ---"></textarea>
  // --- Modal for Details ---
  
  function showDetailsModal(b64data) {
-   // A simplified placeholder for a modal since Bootstrap modal markup is extensive
-   // In a real app, you would have a modal component here.
    const cand = JSON.parse(atob(b64data));
-   let detailsHtml = `
-     <p class="fw-bold">Match Score: ${cand.match.match_score_percent.toFixed(1)}%</p>
-     <h6>Matched Skills:</h6>
-     <p class="text-success">${cand.match.matched_skills.join(', ')}</p>
-     <h6>Missing Skills:</h6>
-     <p class="text-danger">${cand.match.missing_skills.join(', ')}</p>
-     <h6>Extra Skills:</h6>
-     <p class="text-secondary">${cand.match.extra_skills.join(', ')}</p>
-     <hr>
-     <h6>Extracted Skills with Score:</h6>
-     <ul class="list-unstyled small-muted">
-       ${cand.resume_results.ranked.map(s => `<li>${s[0]}: ${s[1]} (Count: ${s[2]})</li>`).join('')}
-     </ul>
-   `;
-   
-   // Using a simple alert for demo purposes; replace with a proper Bootstrap Modal
-   // Due to the no-alert rule, we'll use the message box for a quick preview placeholder:
-   showMessage(`Details for ${cand.name}:\nScore: ${cand.match.match_score_percent.toFixed(1)}%\nMissing: ${cand.match.missing_skills.slice(0, 3).join(', ')}...`);
-   
-   // In a real application, you would use:
-   /*
-   const modalBody = document.getElementById('candidateDetailsBody');
-   modalBody.innerHTML = detailsHtml;
-   const modal = new bootstrap.Modal(document.getElementById('candidateDetailsModal'));
-   modal.show();
-   */
-   
-   // Since we cannot use a full modal, let's temporarily log the details
+   showMessage(`Details for ${cand.name}:\nScore: ${cand.match?.match_score_percent?.toFixed(1) ?? 'N/A'}%\nMissing: ${(cand.match?.missing_skills || []).slice(0,3).join(', ')}...`);
    console.log(`Candidate Details: ${cand.name}`, cand);
  }
 
@@ -754,14 +704,5 @@ Separate resumes using ---"></textarea>
  
 </script>
 
-<!-- NOTE: The script placeholder at the bottom was removed and replaced with the full JS logic. -->
-
 </body>
 </html>
-
-
-
-
-
-
-
