@@ -195,3 +195,4 @@ def match_single_resume(jd_text: str, jd_skills_list: List[str], resume_path: st
         "jd_results": jd_results,
         "match": match_info
     }
+
