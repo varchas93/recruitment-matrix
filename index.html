@@ -296,7 +296,7 @@ Separate resumes using ---"></textarea>
 <script>
  // --- Configuration ---
  // NOTE: You must replace this with your actual deployed backend URL (e.g., your onrender.com address)
- const API_BASE_URL = "https://recruitment-matrix.onrender.com";
+ const API_BASE_URL = "https://recruitment-matrix.onrender.com/";
  let currentCandidates = [];
  let jdSkills = [];
  let skillGapChartInstance = null;
@@ -360,54 +360,61 @@ Separate resumes using ---"></textarea>
  // --- File Upload Handlers ---
 
  document.getElementById('jdFile').addEventListener('change', async (event) => {
-   const file = event.target.files[0];
-   if (!file) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-   const formData = new FormData();
-   formData.append('jd', file);
-   
-   toggleLoading(true);
-   try {
-       const data = await safeFetch(`${API_BASE_URL}api/upload_jd`, {
-           method: 'POST',
-           body: formData,
-       });
+    const formData = new FormData();
+    formData.append('jd', file);
 
-       document.getElementById('jdStatus').textContent = `JD: ${file.name} (${data.jd_word_count} words)`;
-       document.getElementById('jdStatus').dataset.loaded = 'true';
-       showMessage('JD uploaded successfully.');
-   } catch (error) {
-       showMessage(`JD Upload Error: ${error.message}`, true);
-       document.getElementById('jdStatus').dataset.loaded = 'false';
-   } finally {
-       toggleLoading(false);
-   }
- });
+    toggleLoading(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}api/upload_jd`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error);
+
+        document.getElementById('jdStatus').textContent =
+            `JD: ${file.name} (${data.jd_word_count} words)`;
+        document.getElementById('jdStatus').dataset.loaded = 'true';
+        document.getElementById('analyzeBtn').disabled = false;
+
+        showMessage("JD uploaded successfully.");
+    } catch (err) {
+        showMessage("JD Upload Error: " + err.message, true);
+    }
+    toggleLoading(false);
+});
 
  document.getElementById('resumesFile').addEventListener('change', async (event) => {
-   const files = event.target.files;
-   if (files.length === 0) return;
+    const files = event.target.files;
+    if (files.length === 0) return;
 
-   const formData = new FormData();
-   for (const file of files) {
-       formData.append('resumes', file);
-   }
-   
-   toggleLoading(true);
-   try {
-       const data = await safeFetch(`${API_BASE_URL}api/upload_resumes`, {
-           method: 'POST',
-           body: formData,
-       });
+    const formData = new FormData();
+    for (const f of files) formData.append('resumes', f);
 
-       document.getElementById('resumesStatus').textContent = `Resumes: ${data.parsed_count} uploaded`;
-       showMessage(`${data.parsed_count} resumes uploaded and parsed.`);
-   } catch (error) {
-       showMessage(`Resumes Upload Error: ${error.message}`, true);
-   } finally {
-       toggleLoading(false);
-   }
- });
+    toggleLoading(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}api/upload_resumes`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        document.getElementById('resumesStatus').textContent =
+            `Resumes: ${data.parsed_count} uploaded`;
+
+        showMessage(`${data.parsed_count} resumes uploaded.`);
+    } catch (err) {
+        showMessage("Resume Upload Error: " + err.message, true);
+    }
+    toggleLoading(false);
+});
 
  // --- Main Analysis Functions ---
 
@@ -751,6 +758,7 @@ Separate resumes using ---"></textarea>
 
 </body>
 </html>
+
 
 
 
